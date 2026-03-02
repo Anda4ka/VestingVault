@@ -377,6 +377,22 @@
   let _AddressClass = null;    // Address constructor from @btc-vision/transaction
   let _btcAddress = null;      // bitcoin address utils (bech32 decode)
   const _addrCache = {};       // cache hex/bech32 → Address objects
+  let _ownerAddrForSim = null; // owner Address fetched from the node (proper SDK object for write sims)
+
+  async function getFromAddr() {
+    if (_ownerAddrForSim) return _ownerAddrForSim;
+    const vault = document.getElementById('vault-addr').value.trim();
+    if (!vault || !window._opnet) return _walletAddrObj;
+    try {
+      const c = window._opnet.getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
+      const ownerR = await c.owner();
+      if (ownerR?.decoded?.ownerAddress) {
+        _ownerAddrForSim = ownerR.decoded.ownerAddress;
+        console.log('[getFromAddr] cached owner addr');
+      }
+    } catch(e) { console.warn('[getFromAddr] owner() failed:', e.message); }
+    return _ownerAddrForSim || _walletAddrObj;
+  }
 
   // Convert any address string to an SDK Address object (cached)
   // Layer 1: RPC getPublicKeyInfo (works for contracts + indexed wallets)
@@ -616,7 +632,8 @@
     try {
       info('Simulating release()...');
       const { getContract } = window._opnet;
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
+      const from = await getFromAddr();
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, from);
       const sim = await contract.release();
       if ('error' in sim) { err('Simulation failed: ' + sim.error); return; }
       ok('Simulation OK. Sending...');
@@ -634,7 +651,8 @@
     try {
       info('Simulating claimRevenue()...');
       const { getContract } = window._opnet;
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
+      const from = await getFromAddr();
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, from);
       const sim = await contract.claimRevenue();
       if ('error' in sim) { err('Simulation failed: ' + sim.error); return; }
       ok('Simulation OK. Sending...');
@@ -654,11 +672,12 @@
     try {
       const { getContract } = window._opnet;
       const amountBig = BigInt(amount);
+      const from = await getFromAddr();
       const vaultAddr = await toAddr(vault);
 
       // Step 1: increaseAllowance (preferred over approve — avoids front-run race)
       info('Increasing allowance for revenue token...');
-      const token = getContract(revToken, OP20_ABI, window._provider, window._network, _walletAddrObj);
+      const token = getContract(revToken, OP20_ABI, window._provider, window._network, from);
       const approveSim = await token.increaseAllowance(vaultAddr, amountBig);
       if ('error' in approveSim) { err('increaseAllowance sim failed: ' + approveSim.error); return; }
       const approveTx = await approveSim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
@@ -666,7 +685,7 @@
 
       // Step 2: deposit
       info('Depositing revenue...');
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, from);
       const sim = await contract.depositRevenue(amountBig);
       if ('error' in sim) { err('Deposit sim failed: ' + sim.error); return; }
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
@@ -685,9 +704,9 @@
     try {
       info('Calling initialize()...');
       const { getContract } = window._opnet;
-      const [vestAddr, revAddr] = await Promise.all([toAddr(vestToken), toAddr(revToken)]);
+      const [vestAddr, revAddr, from] = await Promise.all([toAddr(vestToken), toAddr(revToken), getFromAddr()]);
       if (!vestAddr || !revAddr) { err('Could not resolve token addresses'); return; }
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, from);
       const sim = await contract.initialize(vestAddr, revAddr);
       if ('error' in sim) { err('initialize() sim failed: ' + sim.error); return; }
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
@@ -713,13 +732,13 @@
       const amountBig   = BigInt(amount);
       const cliffBig    = BigInt(cliff);
       const durationBig = BigInt(duration);
-      const [benAddr, vaultAddr] = await Promise.all([toAddr(beneficiary), toAddr(vault)]);
+      const [benAddr, vaultAddr, from] = await Promise.all([toAddr(beneficiary), toAddr(vault), getFromAddr()]);
       if (!benAddr) { err('Could not resolve beneficiary address'); return; }
       if (!vaultAddr) { err('Could not resolve vault address'); return; }
 
       // Step 1: increaseAllowance for vesting token (preferred — avoids front-run race)
       info('Increasing allowance for vesting token...');
-      const token = getContract(vestToken, OP20_ABI, window._provider, window._network, _walletAddrObj);
+      const token = getContract(vestToken, OP20_ABI, window._provider, window._network, from);
       const approveSim = await token.increaseAllowance(vaultAddr, amountBig);
       if ('error' in approveSim) { err('increaseAllowance sim failed: ' + approveSim.error); return; }
       const approveTx = await approveSim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
@@ -727,7 +746,7 @@
 
       // Step 2: addVesting
       info('Calling addVesting()...');
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, from);
       const sim = await contract.addVesting(benAddr, amountBig, cliffBig, durationBig);
       if ('error' in sim) { err('addVesting sim failed: ' + sim.error); return; }
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
