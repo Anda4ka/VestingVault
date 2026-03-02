@@ -611,7 +611,7 @@ Grand total = 1700 = deposited ✓</div>
           <div class="action-card">
             <h4>Deposit Protocol Revenue</h4>
             <p class="ac-desc">Anyone can deposit revenue tokens for proportional distribution to vested holders. The increaseAllowance + depositRevenue flow runs in sequence automatically.</p>
-            <div class="form-field"><label>Amount (full decimals, e.g. 1000000000000000000 = 1 token)</label><input id="dep-amount" type="text" placeholder="1000000000000000000" /></div>
+            <div class="form-field"><label>Amount (tokens, e.g. 1 or 1.5)</label><input id="dep-amount" type="text" placeholder="1" /><small id="dep-amount-preview" style="color:var(--muted);font-size:.75rem;margin-top:3px;display:block;"></small></div>
             <button class="btn btn-green btn-full" onclick="doDepositRevenue()">Deposit Revenue</button>
           </div>
           <div class="action-card" style="background:var(--bg2);">
@@ -641,7 +641,7 @@ Grand total = 1700 = deposited ✓</div>
             <h4>Add Vesting Schedule</h4>
             <p class="ac-desc">Owner only. Pulls tokens from your wallet via <code>transferFrom</code> and locks them for the beneficiary.</p>
             <div class="form-field"><label>Beneficiary Address</label><input id="av-beneficiary" type="text" placeholder="bcrt1p…" /></div>
-            <div class="form-field"><label>Amount (full decimals)</label><input id="av-amount" type="text" placeholder="1000000000000000000" /></div>
+            <div class="form-field"><label>Amount (tokens, e.g. 1 or 1.5)</label><input id="av-amount" type="text" placeholder="1" /><small id="av-amount-preview" style="color:var(--muted);font-size:.75rem;margin-top:3px;display:block;"></small></div>
             <div class="form-field"><label>Cliff (blocks)</label><input id="av-cliff" type="text" placeholder="10" /></div>
             <div class="form-field"><label>Duration (blocks)</label><input id="av-duration" type="text" placeholder="100" /></div>
             <button class="btn btn-orange btn-full" onclick="doAddVesting()">Add Vesting</button>
@@ -813,6 +813,29 @@ Grand total = 1700 = deposited ✓</div>
       return `${w}.${f}`;
     }
     return n.toString();
+  }
+
+  // Parse human-readable token amount ("1", "1.5", "0.001") → raw BigInt with 18 decimals.
+  // Returns null if the input is invalid.
+  function parseTokenAmount(str) {
+    str = (str || '').trim().replace(/,/g, '');
+    if (!str) return null;
+    const parts = str.split('.');
+    if (parts.length > 2) return null;
+    const intPart = parts[0].replace(/^0+/, '') || '0';
+    const fracStr = (parts[1] || '').slice(0, 18).padEnd(18, '0');
+    try { return BigInt(intPart) * 10n ** 18n + BigInt(fracStr); } catch { return null; }
+  }
+
+  // Show raw wei preview under an amount input as the user types.
+  function bindAmountPreview(inputId, previewId) {
+    const inp = document.getElementById(inputId);
+    const pre = document.getElementById(previewId);
+    if (!inp || !pre) return;
+    inp.addEventListener('input', () => {
+      const v = parseTokenAmount(inp.value);
+      pre.textContent = v !== null ? `= ${v.toString()} wei` : inp.value ? '⚠ invalid number' : '';
+    });
   }
   function log(msg, cls='') {
     const el = document.getElementById('activity-log');
@@ -1061,7 +1084,8 @@ Grand total = 1700 = deposited ✓</div>
     const amount = document.getElementById('dep-amount').value.trim();
     if (!vault || !revToken || !amount) { warn('Fill vault, revenue token, and amount'); return; }
     try {
-      const ab = BigInt(amount);
+      const ab = parseTokenAmount(amount);
+      if (!ab || ab <= 0n) { warn('Invalid amount — enter a number like 1 or 1.5'); return; }
       const from = await getFromAddr();
       const vaultAddr = await toAddr(vault);
       const tok = _opnet.getContract(revToken, OP20_ABI, _provider, _network, from);
@@ -1095,7 +1119,9 @@ Grand total = 1700 = deposited ✓</div>
     const dur = document.getElementById('av-duration').value.trim();
     if (!vault || !vestToken || !ben || !amt || !clf || !dur) { warn('Fill all fields'); return; }
     try {
-      const ab = BigInt(amt), cb = BigInt(clf), db = BigInt(dur);
+      const ab = parseTokenAmount(amt);
+      if (!ab || ab <= 0n) { warn('Invalid amount — enter a number like 1 or 1.5'); return; }
+      const cb = BigInt(clf), db = BigInt(dur);
       const [benAddr, vaultAddr, from] = await Promise.all([toAddr(ben), toAddr(vault), getFromAddr()]);
       if (!benAddr) { err('Could not resolve beneficiary address'); return; }
       if (!vaultAddr) { err('Could not resolve vault address'); return; }
@@ -1110,6 +1136,10 @@ Grand total = 1700 = deposited ✓</div>
 
   // ─── wire up nav connect button ───────────────────────────────────────────
   document.getElementById('nav-connect-btn').addEventListener('click', connectWallet);
+
+  // ─── wire up amount preview helpers ────────────────────────────────────────
+  bindAmountPreview('dep-amount', 'dep-amount-preview');
+  bindAmountPreview('av-amount',  'av-amount-preview');
 </script>
 
 </body>
