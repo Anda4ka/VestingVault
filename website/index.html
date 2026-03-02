@@ -746,8 +746,15 @@ Grand total = 1700 = deposited ✓</div>
       const ownerAddr = ownerR?.properties?.ownerAddress;
       console.log('[getFromAddr] ownerAddr type:', typeof ownerAddr, 'value:', ownerAddr, 'keys:', ownerAddr && Object.keys(ownerAddr));
       if (ownerAddr) {
+        // The owner Address is also a Uint8Array(32) without legacyPublicKey.
+        // Copy it from _walletAddrObj (same wallet = same secp256k1 key).
+        const legacyPk = _walletAddrObj?.legacyPublicKey;
+        if (legacyPk) {
+          Object.defineProperty(ownerAddr, 'legacyPublicKey', { get: () => legacyPk, configurable: true });
+          console.log('[getFromAddr] patched legacyPublicKey onto owner addr, len:', ownerAddr.legacyPublicKey?.length);
+        }
         _ownerAddrForSim = ownerAddr;
-        console.log('[getFromAddr] cached! Object.keys:', Object.keys(_ownerAddrForSim));
+        console.log('[getFromAddr] cached!');
       } else {
         console.warn('[getFromAddr] ownerAddress is falsy — vault may not be deployed by this wallet or _owner is zero');
       }

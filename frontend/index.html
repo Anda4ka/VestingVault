@@ -387,8 +387,14 @@
       const c = window._opnet.getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
       const ownerR = await c.owner();
       if (ownerR?.properties?.ownerAddress) {
-        _ownerAddrForSim = ownerR.properties.ownerAddress;
-        console.log('[getFromAddr] cached owner addr');
+        const ownerAddr = ownerR.properties.ownerAddress;
+        // Copy legacyPublicKey from _walletAddrObj (same wallet = same secp256k1 key)
+        const legacyPk = _walletAddrObj?.legacyPublicKey;
+        if (legacyPk) {
+          Object.defineProperty(ownerAddr, 'legacyPublicKey', { get: () => legacyPk, configurable: true });
+        }
+        _ownerAddrForSim = ownerAddr;
+        console.log('[getFromAddr] cached with legacyPublicKey len:', ownerAddr.legacyPublicKey?.length);
       }
     } catch(e) { console.warn('[getFromAddr] owner() failed:', e.message); }
     return _ownerAddrForSim || _walletAddrObj;
