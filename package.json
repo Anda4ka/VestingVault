@@ -1,0 +1,26 @@
+{
+    "name": "vesting-vault-opnet",
+    "version": "1.0.0",
+    "description": "Vesting Dashboard with Revenue Share — OPNet Bitcoin L1 DeFi",
+    "type": "module",
+    "scripts": {
+        "build": "asc src/index.ts --config asconfig.json --target debug",
+        "build:release": "asc src/index.ts --config asconfig.json --target release",
+        "clean": "rm -rf build/*",
+        "lint": "eslint src/"
+    },
+    "author": "VibeCoding Challenge Week 2",
+    "license": "MIT",
+    "dependencies": {
+        "@assemblyscript/loader": "^0.28.9",
+        "@btc-vision/as-bignum": "^0.1.2",
+        "@btc-vision/assemblyscript": "^0.29.2",
+        "@btc-vision/btc-runtime": "^1.11.0-rc.10",
+        "@btc-vision/opnet-transform": "^1.2.0"
+    },
+    "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "eslint": "^10.0.2",
+        "typescript-eslint": "^8.56.1"
+    }
+}

@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VestingVault — Revenue Share Dashboard</title>
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --card: #141a2e;
+      --border: #252d4a;
+      --accent: #f7931a;
+      --accent2: #3b82f6;
+      --green: #22c55e;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --font: 'Segoe UI', system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: 900px;
+      margin: 0 auto 32px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo svg { width: 32px; height: 32px; }
+    h1 { font-size: 1.4rem; font-weight: 700; }
+    h1 span { color: var(--accent); }
+    .badge {
+      background: rgba(247,147,26,.15);
+      border: 1px solid rgba(247,147,26,.3);
+      color: var(--accent);
+      font-size: .7rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 99px;
+      letter-spacing: .05em;
+      text-transform: uppercase;
+    }
+    #connect-btn {
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      padding: 8px 20px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: .9rem;
+      transition: opacity .15s;
+    }
+    #connect-btn:hover { opacity: .85; }
+    #connect-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+    .container { max-width: 900px; margin: 0 auto; }
+
+    /* Config card */
+    .config-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 20px;
+    }
+    .config-card h2 { font-size: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px; }
+    .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media(max-width:580px){ .fields { grid-template-columns: 1fr; } }
+    .field label { display: block; font-size: .75rem; color: var(--muted); margin-bottom: 4px; }
+    .field input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--text);
+      font-size: .8rem;
+      font-family: monospace;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .field input:focus { border-color: var(--accent2); }
+
+    /* Stats grid */
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    .stat {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .stat-label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }
+    .stat-value { font-size: 1.3rem; font-weight: 700; font-family: monospace; word-break: break-all; }
+    .stat-value.green { color: var(--green); }
+    .stat-value.accent { color: var(--accent); }
+    .stat-value.blue { color: var(--accent2); }
+
+    /* Actions */
+    .actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 20px;
+    }
+    @media(max-width:580px){ .actions { grid-template-columns: 1fr; } }
+    .action-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .action-card h3 { font-size: .85rem; font-weight: 600; margin-bottom: 12px; }
+    .action-card input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--text);
+      font-size: .8rem;
+      outline: none;
+      margin-bottom: 8px;
+    }
+    .action-card input:focus { border-color: var(--accent2); }
+    .action-card input::placeholder { color: var(--muted); }
+    .btn {
+      width: 100%;
+      padding: 9px;
+      border: none;
+      border-radius: 7px;
+      font-weight: 700;
+      font-size: .85rem;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+    .btn:hover { opacity: .85; }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-secondary { background: var(--accent2); color: #fff; }
+    .btn-green { background: var(--green); color: #000; }
+
+    /* Log */
+    .log-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .log-card h2 { font-size: .85rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+    #log {
+      font-family: monospace;
+      font-size: .75rem;
+      line-height: 1.6;
+      max-height: 220px;
+      overflow-y: auto;
+      color: var(--muted);
+    }
+    #log .ok  { color: var(--green); }
+    #log .err { color: var(--red); }
+    #log .info { color: var(--accent2); }
+    #log .warn { color: var(--accent); }
+
+    /* Status bar */
+    #status-bar {
+      position: fixed;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 7px 20px;
+      font-size: .78rem;
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+    }
+    .dot.connected { background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse {
+      0%,100% { opacity: 1; }
+      50% { opacity: .4; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <!-- Bitcoin / lock icon -->
+    <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="16" cy="16" r="16" fill="#f7931a" opacity=".15"/>
+      <text x="8" y="22" font-size="16" fill="#f7931a">🔒</text>
+    </svg>
+    <div>
+      <h1><span>Vesting</span>Vault</h1>
+      <div class="badge">OPNet · Bitcoin L1</div>
+    </div>
+  </div>
+  <button id="connect-btn">Connect OP Wallet</button>
+</header>
+
+<div class="container">
+
+  <!-- Contract config -->
+  <div class="config-card">
+    <h2>Contract Configuration</h2>
+    <div class="fields">
+      <div class="field">
+        <label>Vault Contract Address</label>
+        <input id="vault-addr" type="text" value="opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87" />
+      </div>
+      <div class="field">
+        <label>Your Wallet Address</label>
+        <input id="wallet-addr" type="text" placeholder="bcrt1p... (auto-filled on connect)" readonly />
+      </div>
+      <div class="field">
+        <label>Vesting Token Address</label>
+        <input id="vest-token" type="text" placeholder="bcrt1p... (OP20 token)" />
+      </div>
+      <div class="field">
+        <label>Revenue Token Address</label>
+        <input id="rev-token" type="text" placeholder="bcrt1p... (OP20 token)" />
+      </div>
+    </div>
+    <div style="margin-top:12px; display:flex; gap:8px; flex-wrap:wrap;">
+      <button class="btn btn-secondary" style="width:auto;padding:7px 16px;" onclick="loadVaultState()">Refresh State</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-label">Total Locked</div>
+      <div class="stat-value accent" id="s-total-locked">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Total Revenue Deposited</div>
+      <div class="stat-value accent" id="s-total-revenue">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Your Releasable</div>
+      <div class="stat-value green" id="s-releasable">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Your Pending Revenue</div>
+      <div class="stat-value blue" id="s-pending-rev">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Your Vested Balance</div>
+      <div class="stat-value" id="s-vested">—</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">Vesting Owner</div>
+      <div class="stat-value" id="s-owner" style="font-size:.65rem;">—</div>
+    </div>
+  </div>
+
+  <!-- Vesting info -->
+  <div class="config-card" id="vesting-info-card" style="display:none; margin-bottom:20px;">
+    <h2>Your Vesting Schedule</h2>
+    <div class="fields">
+      <div class="field">
+        <label>Total Amount</label>
+        <input id="vi-total" type="text" readonly />
+      </div>
+      <div class="field">
+        <label>Start Block</label>
+        <input id="vi-start" type="text" readonly />
+      </div>
+      <div class="field">
+        <label>Cliff Duration (blocks)</label>
+        <input id="vi-cliff" type="text" readonly />
+      </div>
+      <div class="field">
+        <label>Vesting Duration (blocks)</label>
+        <input id="vi-duration" type="text" readonly />
+      </div>
+      <div class="field">
+        <label>Already Released</label>
+        <input id="vi-released" type="text" readonly />
+      </div>
+      <div class="field">
+        <label>Releasable Now</label>
+        <input id="vi-releasable" type="text" readonly />
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions -->
+  <div class="actions">
+
+    <!-- Release -->
+    <div class="action-card">
+      <h3>Release Vested Tokens</h3>
+      <p style="font-size:.75rem;color:var(--muted);margin-bottom:10px;">Claim your vested tokens. Cliff must have passed.</p>
+      <button class="btn btn-primary" onclick="doRelease()">Release Tokens</button>
+    </div>
+
+    <!-- Claim Revenue -->
+    <div class="action-card">
+      <h3>Claim Revenue Share</h3>
+      <p style="font-size:.75rem;color:var(--muted);margin-bottom:10px;">Claim your proportional share of protocol revenue.</p>
+      <button class="btn btn-secondary" onclick="doClaimRevenue()">Claim Revenue</button>
+    </div>
+
+    <!-- Deposit Revenue (anyone) -->
+    <div class="action-card">
+      <h3>Deposit Revenue</h3>
+      <p style="font-size:.75rem;color:var(--muted);margin-bottom:10px;">Deposit revenue tokens for distribution. Allowance set automatically via increaseAllowance().</p>
+      <input id="deposit-amount" type="text" placeholder="Amount (e.g. 1000000000000000000)" />
+      <button class="btn btn-green" onclick="doDepositRevenue()">Deposit Revenue</button>
+    </div>
+
+    <!-- Add Vesting (owner) -->
+    <div class="action-card">
+      <h3>Add Vesting Schedule (Owner)</h3>
+      <p style="font-size:.75rem;color:var(--muted);margin-bottom:10px;">Owner only. Allowance set automatically via increaseAllowance().</p>
+      <input id="av-beneficiary" type="text" placeholder="Beneficiary address" />
+      <input id="av-amount" type="text" placeholder="Amount (1e18)" />
+      <input id="av-cliff" type="text" placeholder="Cliff (blocks)" />
+      <input id="av-duration" type="text" placeholder="Duration (blocks)" />
+      <button class="btn btn-primary" onclick="doAddVesting()">Add Vesting</button>
+    </div>
+
+  </div>
+
+  <!-- Log -->
+  <div class="log-card">
+    <h2>Activity Log</h2>
+    <div id="log"></div>
+  </div>
+
+</div>
+
+<div id="status-bar">
+  <div class="dot" id="dot"></div>
+  <span id="status-text">Not connected</span>
+</div>
+
+<script type="module">
+  // ─── constants ───────────────────────────────────────────────────────────
+  const RPC_URL = 'https://testnet.opnet.org';
+  const MAX_SAT = 50_000n;
+
+  let provider = null;
+  let walletAddress = null;
+  let network = null;
+
+  // ─── logging ─────────────────────────────────────────────────────────────
+  function log(msg, cls = '') {
+    const el = document.getElementById('log');
+    const line = document.createElement('div');
+    if (cls) line.className = cls;
+    line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    el.appendChild(line);
+    el.scrollTop = el.scrollHeight;
+  }
+  function ok(m)   { log('✓ ' + m, 'ok'); }
+  function err(m)  { log('✗ ' + m, 'err'); }
+  function info(m) { log('ℹ ' + m, 'info'); }
+  function warn(m) { log('⚠ ' + m, 'warn'); }
+
+  // ─── helpers ─────────────────────────────────────────────────────────────
+  function fmt(val) {
+    if (val === null || val === undefined || val === '—') return '—';
+    const n = typeof val === 'bigint' ? val : BigInt(val);
+    if (n === 0n) return '0';
+    // Show as decimal with 18 decimals if large
+    if (n >= 10n ** 15n) {
+      const whole = n / 10n**18n;
+      const frac  = (n % 10n**18n).toString().padStart(18,'0').slice(0,4);
+      return `${whole}.${frac}`;
+    }
+    return n.toString();
+  }
+
+  function getVaultAddr() { return document.getElementById('vault-addr').value.trim(); }
+  function getVestToken() { return document.getElementById('vest-token').value.trim(); }
+  function getRevToken()  { return document.getElementById('rev-token').value.trim(); }
+
+  // ─── ABI ─────────────────────────────────────────────────────────────────
+  const VESTING_VAULT_ABI = [
+    { name: 'addVesting',  type: 'Function', constant: false,
+      inputs: [{name:'beneficiary',type:'ADDRESS'},{name:'amount',type:'UINT256'},{name:'cliffDuration',type:'UINT256'},{name:'vestingDuration',type:'UINT256'}],
+      outputs:[{name:'success',type:'BOOL'}] },
+    { name: 'release',     type: 'Function', constant: false, inputs: [], outputs:[{name:'amount',type:'UINT256'}] },
+    { name: 'depositRevenue', type: 'Function', constant: false,
+      inputs:[{name:'amount',type:'UINT256'}], outputs:[{name:'success',type:'BOOL'}] },
+    { name: 'claimRevenue', type: 'Function', constant: false, inputs: [], outputs:[{name:'amount',type:'UINT256'}] },
+    { name: 'releasableAmount', type: 'Function', constant: true,
+      inputs:[{name:'beneficiary',type:'ADDRESS'}], outputs:[{name:'amount',type:'UINT256'}] },
+    { name: 'vestedBalance', type: 'Function', constant: true,
+      inputs:[{name:'beneficiary',type:'ADDRESS'}], outputs:[{name:'amount',type:'UINT256'}] },
+    { name: 'pendingRevenue', type: 'Function', constant: true,
+      inputs:[{name:'beneficiary',type:'ADDRESS'}], outputs:[{name:'amount',type:'UINT256'}] },
+    { name: 'totalRevenueDeposited', type: 'Function', constant: true, inputs: [], outputs:[{name:'amount',type:'UINT256'}] },
+    { name: 'getVestingInfo', type: 'Function', constant: true,
+      inputs:[{name:'beneficiary',type:'ADDRESS'}],
+      outputs:[{name:'totalAmount',type:'UINT256'},{name:'startBlock',type:'UINT256'},{name:'cliffDuration',type:'UINT256'},{name:'vestingDuration',type:'UINT256'},{name:'released',type:'UINT256'},{name:'releasable',type:'UINT256'}] },
+    { name: 'owner',           type: 'Function', constant: true, inputs: [], outputs:[{name:'ownerAddress',type:'ADDRESS'}] },
+    { name: 'vestingToken',    type: 'Function', constant: true, inputs: [], outputs:[{name:'token',type:'ADDRESS'}] },
+    { name: 'revenueToken',    type: 'Function', constant: true, inputs: [], outputs:[{name:'token',type:'ADDRESS'}] },
+    { name: 'totalLocked',     type: 'Function', constant: true, inputs: [], outputs:[{name:'amount',type:'UINT256'}] },
+  ];
+
+  const OP20_ABI = [
+    { name: 'increaseAllowance', type: 'Function', constant: false,
+      inputs:[{name:'spender',type:'ADDRESS'},{name:'amount',type:'UINT256'}], outputs:[{name:'success',type:'BOOL'}] },
+    { name: 'balanceOf', type: 'Function', constant: true,
+      inputs:[{name:'account',type:'ADDRESS'}], outputs:[{name:'balance',type:'UINT256'}] },
+  ];
+
+  // ─── connect ─────────────────────────────────────────────────────────────
+  window.connectWallet = async function() {
+    try {
+      info('Connecting to OP Wallet...');
+
+      // Use opnet npm CDN (esm.sh)
+      const { JSONRpcProvider, getContract } = await import('https://esm.sh/opnet@latest');
+      const { networks } = await import('https://esm.sh/@btc-vision/bitcoin@latest');
+
+      network = networks.opnetTestnet;
+      provider = new JSONRpcProvider(RPC_URL, network);
+
+      // Try OP Wallet
+      if (window.opnet) {
+        const accounts = await window.opnet.requestAccounts();
+        walletAddress = accounts[0];
+      } else if (window.unisat) {
+        const accounts = await window.unisat.requestAccounts();
+        walletAddress = accounts[0];
+      } else {
+        warn('OP Wallet not detected. Install from https://opwallet.org');
+        warn('Running in read-only mode. Fill your address manually.');
+        walletAddress = document.getElementById('wallet-addr').value.trim() || null;
+      }
+
+      if (walletAddress) {
+        document.getElementById('wallet-addr').value = walletAddress;
+        document.getElementById('dot').classList.add('connected');
+        document.getElementById('status-text').textContent = `Connected: ${walletAddress.slice(0,12)}...`;
+        ok(`Wallet connected: ${walletAddress}`);
+        document.getElementById('connect-btn').textContent = 'Connected';
+        document.getElementById('connect-btn').disabled = true;
+      }
+
+      // Store provider globally
+      window._provider = provider;
+      window._network  = network;
+      window._opnet    = { JSONRpcProvider, getContract };
+
+      await loadVaultState();
+
+    } catch(e) {
+      err('Connect failed: ' + e.message);
+    }
+  };
+
+  // ─── load state ──────────────────────────────────────────────────────────
+  window.loadVaultState = async function() {
+    const vault = getVaultAddr();
+    if (!vault) { warn('Set vault address first'); return; }
+    if (!window._opnet) { warn('Connect wallet first'); return; }
+
+    const { getContract } = window._opnet;
+    try {
+      info('Loading vault state...');
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress || vault);
+
+      const [ownerR, totalLockedR, totalRevR] = await Promise.all([
+        contract.owner(),
+        contract.totalLocked(),
+        contract.totalRevenueDeposited(),
+      ]);
+
+      document.getElementById('s-owner').textContent        = ownerR.decoded?.ownerAddress || '—';
+      document.getElementById('s-total-locked').textContent = fmt(totalLockedR.decoded?.amount);
+      document.getElementById('s-total-revenue').textContent = fmt(totalRevR.decoded?.amount);
+
+      if (walletAddress) {
+        const [relR, pendR, vestedR, infoR] = await Promise.all([
+          contract.releasableAmount(walletAddress),
+          contract.pendingRevenue(walletAddress),
+          contract.vestedBalance(walletAddress),
+          contract.getVestingInfo(walletAddress),
+        ]);
+
+        document.getElementById('s-releasable').textContent  = fmt(relR.decoded?.amount);
+        document.getElementById('s-pending-rev').textContent = fmt(pendR.decoded?.amount);
+        document.getElementById('s-vested').textContent      = fmt(vestedR.decoded?.amount);
+
+        const vi = infoR.decoded;
+        if (vi && vi.totalAmount > 0n) {
+          document.getElementById('vesting-info-card').style.display = 'block';
+          document.getElementById('vi-total').value     = fmt(vi.totalAmount);
+          document.getElementById('vi-start').value     = vi.startBlock?.toString() || '—';
+          document.getElementById('vi-cliff').value     = vi.cliffDuration?.toString() || '—';
+          document.getElementById('vi-duration').value  = vi.vestingDuration?.toString() || '—';
+          document.getElementById('vi-released').value  = fmt(vi.released);
+          document.getElementById('vi-releasable').value = fmt(vi.releasable);
+        }
+      }
+
+      ok('State loaded');
+    } catch(e) {
+      err('Load failed: ' + e.message);
+    }
+  };
+
+  // ─── release ─────────────────────────────────────────────────────────────
+  window.doRelease = async function() {
+    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    const vault = getVaultAddr();
+    if (!vault) { warn('Set vault address'); return; }
+    try {
+      info('Simulating release()...');
+      const { getContract } = window._opnet;
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
+      const sim = await contract.release();
+      if ('error' in sim) { err('Simulation failed: ' + sim.error); return; }
+      ok('Simulation OK. Sending...');
+      const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
+      ok('release() TX: ' + tx);
+      await loadVaultState();
+    } catch(e) { err('release() failed: ' + e.message); }
+  };
+
+  // ─── claimRevenue ────────────────────────────────────────────────────────
+  window.doClaimRevenue = async function() {
+    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    const vault = getVaultAddr();
+    if (!vault) { warn('Set vault address'); return; }
+    try {
+      info('Simulating claimRevenue()...');
+      const { getContract } = window._opnet;
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
+      const sim = await contract.claimRevenue();
+      if ('error' in sim) { err('Simulation failed: ' + sim.error); return; }
+      ok('Simulation OK. Sending...');
+      const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
+      ok('claimRevenue() TX: ' + tx);
+      await loadVaultState();
+    } catch(e) { err('claimRevenue() failed: ' + e.message); }
+  };
+
+  // ─── depositRevenue ──────────────────────────────────────────────────────
+  window.doDepositRevenue = async function() {
+    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    const vault = getVaultAddr();
+    const revToken = getRevToken();
+    const amount = document.getElementById('deposit-amount').value.trim();
+    if (!vault || !revToken || !amount) { warn('Fill vault, revenue token, and amount'); return; }
+    try {
+      const { getContract } = window._opnet;
+      const amountBig = BigInt(amount);
+
+      // Step 1: increaseAllowance (preferred over approve — avoids front-run race)
+      info('Increasing allowance for revenue token...');
+      const token = getContract(revToken, OP20_ABI, window._provider, window._network, walletAddress);
+      const approveSim = await token.increaseAllowance(vault, amountBig);
+      if ('error' in approveSim) { err('increaseAllowance sim failed: ' + approveSim.error); return; }
+      const approveTx = await approveSim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
+      ok('increaseAllowance TX: ' + approveTx);
+
+      // Step 2: deposit
+      info('Depositing revenue...');
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
+      const sim = await contract.depositRevenue(amountBig);
+      if ('error' in sim) { err('Deposit sim failed: ' + sim.error); return; }
+      const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
+      ok('depositRevenue() TX: ' + tx);
+      await loadVaultState();
+    } catch(e) { err('depositRevenue() failed: ' + e.message); }
+  };
+
+  // ─── addVesting (owner) ──────────────────────────────────────────────────
+  window.doAddVesting = async function() {
+    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    const vault = getVaultAddr();
+    const vestToken = getVestToken();
+    const beneficiary = document.getElementById('av-beneficiary').value.trim();
+    const amount      = document.getElementById('av-amount').value.trim();
+    const cliff       = document.getElementById('av-cliff').value.trim();
+    const duration    = document.getElementById('av-duration').value.trim();
+    if (!vault || !vestToken || !beneficiary || !amount || !cliff || !duration) {
+      warn('Fill all addVesting fields'); return;
+    }
+    try {
+      const { getContract } = window._opnet;
+      const amountBig   = BigInt(amount);
+      const cliffBig    = BigInt(cliff);
+      const durationBig = BigInt(duration);
+
+      // Step 1: increaseAllowance for vesting token (preferred — avoids front-run race)
+      info('Increasing allowance for vesting token...');
+      const token = getContract(vestToken, OP20_ABI, window._provider, window._network, walletAddress);
+      const approveSim = await token.increaseAllowance(vault, amountBig);
+      if ('error' in approveSim) { err('increaseAllowance sim failed: ' + approveSim.error); return; }
+      const approveTx = await approveSim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
+      ok('increaseAllowance TX: ' + approveTx);
+
+      // Step 2: addVesting
+      info('Calling addVesting()...');
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
+      const sim = await contract.addVesting(beneficiary, amountBig, cliffBig, durationBig);
+      if ('error' in sim) { err('addVesting sim failed: ' + sim.error); return; }
+      const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
+      ok('addVesting() TX: ' + tx);
+      await loadVaultState();
+    } catch(e) { err('addVesting() failed: ' + e.message); }
+  };
+
+  // ─── wire up button ──────────────────────────────────────────────────────
+  document.getElementById('connect-btn').addEventListener('click', connectWallet);
+</script>
+
+</body>
+</html>

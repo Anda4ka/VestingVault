@@ -1,0 +1,39 @@
+{
+    "targets": {
+        "debug": {
+            "outFile": "build/VestingVault.wasm",
+            "textFile": "build/VestingVault.wat"
+        },
+        "release": {
+            "outFile": "build/VestingVault.wasm",
+            "textFile": "build/VestingVault.wat",
+            "noAssert": true,
+            "optimizeLevel": 3,
+            "shrinkLevel": 2
+        }
+    },
+    "options": {
+        "transform": "@btc-vision/opnet-transform",
+        "sourceMap": false,
+        "optimizeLevel": 3,
+        "shrinkLevel": 1,
+        "converge": true,
+        "noAssert": false,
+        "enable": [
+            "sign-extension",
+            "mutable-globals",
+            "nontrapping-f2i",
+            "bulk-memory",
+            "simd",
+            "reference-types",
+            "multi-value"
+        ],
+        "runtime": "stub",
+        "memoryBase": 0,
+        "initialMemory": 1,
+        "exportStart": "start",
+        "use": [
+            "abort=src/index/abort"
+        ]
+    }
+}

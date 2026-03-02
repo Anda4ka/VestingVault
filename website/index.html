@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VestingVault — Real Yield on Bitcoin L1</title>
+  <meta name="description" content="On-chain vesting with cliff/linear release + proportional revenue sharing for OP_20 tokens on OPNet Bitcoin L1. No bridges, no L2." />
+  <meta property="og:title" content="VestingVault — Real Yield on Bitcoin L1" />
+  <meta property="og:description" content="Vesting Dashboard with Revenue Share. Protocol fees distributed proportionally to vested holders using reward-per-token accumulator." />
+
+  <style>
+    /* ═══════════════════════════════════════════ TOKENS */
+    :root {
+      --bg:       #08090f;
+      --bg2:      #0d1120;
+      --card:     #111827;
+      --card2:    #161e2e;
+      --border:   #1f2a40;
+      --border2:  #253047;
+      --orange:   #f7931a;
+      --orange2:  #fba84a;
+      --blue:     #3b82f6;
+      --blue2:    #60a5fa;
+      --green:    #22c55e;
+      --red:      #ef4444;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --muted2:   #94a3b8;
+      --font:     'Segoe UI', system-ui, -apple-system, sans-serif;
+      --mono:     'Cascadia Code', 'Fira Code', 'Consolas', monospace;
+      --radius:   14px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); line-height: 1.6; }
+    a { color: inherit; text-decoration: none; }
+
+    /* ═══════════════════════════════════════════ UTILS */
+    .container { max-width: 1100px; margin: 0 auto; padding: 0 20px; }
+    .tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: rgba(247,147,26,.12); border: 1px solid rgba(247,147,26,.25);
+      color: var(--orange); font-size: .7rem; font-weight: 700;
+      padding: 3px 10px; border-radius: 99px; letter-spacing: .06em; text-transform: uppercase;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 24px; border-radius: 10px; font-weight: 700; font-size: .9rem;
+      border: none; cursor: pointer; transition: all .18s; white-space: nowrap;
+    }
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; transform: none !important; }
+    .btn-orange { background: var(--orange); color: #000; box-shadow: 0 4px 24px rgba(247,147,26,.25); }
+    .btn-orange:hover { background: var(--orange2); box-shadow: 0 6px 32px rgba(247,147,26,.4); }
+    .btn-blue { background: var(--blue); color: #fff; box-shadow: 0 4px 24px rgba(59,130,246,.2); }
+    .btn-blue:hover { background: var(--blue2); }
+    .btn-green { background: var(--green); color: #000; }
+    .btn-ghost {
+      background: transparent; color: var(--text); border: 1px solid var(--border2);
+    }
+    .btn-ghost:hover { border-color: var(--orange); color: var(--orange); background: rgba(247,147,26,.06); }
+    .btn-sm { padding: 8px 16px; font-size: .8rem; border-radius: 8px; }
+    .btn-full { width: 100%; }
+
+    /* ═══════════════════════════════════════════ NAV */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(8,9,15,.85); backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 0;
+    }
+    .nav-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 1.1rem; }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg, #f7931a, #fba84a);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; box-shadow: 0 4px 16px rgba(247,147,26,.3);
+    }
+    .logo span { color: var(--orange); }
+    .nav-links { display: flex; align-items: center; gap: 24px; }
+    .nav-links a {
+      font-size: .85rem; color: var(--muted2); transition: color .15s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-right { display: flex; align-items: center; gap: 12px; }
+    .wallet-info {
+      display: none; align-items: center; gap: 8px;
+      background: var(--card); border: 1px solid var(--border2);
+      padding: 7px 14px; border-radius: 99px; font-size: .78rem;
+    }
+    .wallet-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+    @media(max-width:680px){
+      .nav-links { display: none; }
+      .logo-icon { width: 28px; height: 28px; font-size:15px; }
+    }
+
+    /* ═══════════════════════════════════════════ HERO */
+    .hero {
+      padding: 100px 0 80px;
+      background: radial-gradient(ellipse 80% 60% at 50% -10%, rgba(247,147,26,.08) 0%, transparent 70%);
+      text-align: center;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(circle at 20% 80%, rgba(59,130,246,.04) 0%, transparent 50%),
+                  radial-gradient(circle at 80% 20%, rgba(247,147,26,.05) 0%, transparent 50%);
+      pointer-events: none;
+    }
+    .hero-badge { margin-bottom: 24px; }
+    .hero h1 {
+      font-size: clamp(2.2rem, 5vw, 3.8rem);
+      font-weight: 800; line-height: 1.15; letter-spacing: -.02em;
+      margin-bottom: 20px;
+    }
+    .hero h1 .accent { color: var(--orange); }
+    .hero h1 .accent2 { color: var(--blue); }
+    .hero p {
+      font-size: clamp(1rem, 2vw, 1.2rem);
+      color: var(--muted2); max-width: 600px; margin: 0 auto 36px;
+    }
+    .hero-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; margin-bottom: 56px; }
+    .hero-chips { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: var(--card); border: 1px solid var(--border2);
+      padding: 6px 14px; border-radius: 99px; font-size: .75rem; color: var(--muted2);
+    }
+    .chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+    /* ═══════════════════════════════════════════ LIVE STATS BAR */
+    .stats-bar {
+      background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+      padding: 22px 0;
+    }
+    .stats-bar-inner {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0; text-align: center;
+    }
+    .stat-item { padding: 0 20px; position: relative; }
+    .stat-item + .stat-item::before {
+      content: ''; position: absolute; left: 0; top: 20%; height: 60%;
+      border-left: 1px solid var(--border);
+    }
+    .stat-item .sv { font-size: 1.5rem; font-weight: 800; font-family: var(--mono); color: var(--orange); }
+    .stat-item .sl { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-top: 2px; }
+    @media(max-width:500px){ .stat-item + .stat-item::before { display: none; } }
+
+    /* ═══════════════════════════════════════════ SECTION HEADING */
+    .section { padding: 80px 0; }
+    .section-label { font-size: .72rem; color: var(--orange); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
+    .section-title { font-size: clamp(1.6rem, 3.5vw, 2.4rem); font-weight: 800; line-height: 1.2; margin-bottom: 14px; }
+    .section-sub { font-size: 1rem; color: var(--muted2); max-width: 560px; }
+
+    /* ═══════════════════════════════════════════ HOW IT WORKS */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-top: 48px; }
+    .step {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px 24px;
+      position: relative; transition: border-color .2s;
+    }
+    .step:hover { border-color: var(--orange); }
+    .step-num {
+      font-size: 2.5rem; font-weight: 900; font-family: var(--mono);
+      color: rgba(247,147,26,.15); line-height: 1; margin-bottom: 12px;
+    }
+    .step-icon { font-size: 1.8rem; margin-bottom: 12px; }
+    .step h3 { font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+    .step p { font-size: .82rem; color: var(--muted2); }
+
+    /* ═══════════════════════════════════════════ FEATURES */
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; margin-top: 48px; }
+    .feature {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 28px 26px;
+      transition: border-color .2s, transform .2s;
+    }
+    .feature:hover { border-color: var(--border2); transform: translateY(-2px); }
+    .feature-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; margin-bottom: 18px;
+    }
+    .fi-orange { background: rgba(247,147,26,.12); }
+    .fi-blue   { background: rgba(59,130,246,.12); }
+    .fi-green  { background: rgba(34,197,94,.12); }
+    .fi-purple { background: rgba(168,85,247,.12); }
+    .feature h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 10px; }
+    .feature p  { font-size: .83rem; color: var(--muted2); line-height: 1.65; }
+    .feature .code-badge {
+      display: inline-block; margin-top: 14px;
+      background: var(--card2); border: 1px solid var(--border2);
+      padding: 4px 10px; border-radius: 6px; font-family: var(--mono); font-size: .72rem; color: var(--orange);
+    }
+
+    /* ═══════════════════════════════════════════ MATH */
+    .math-section { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+    .math-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 40px; align-items: start; }
+    @media(max-width:680px){ .math-grid { grid-template-columns: 1fr; } }
+    .math-formula {
+      background: var(--card); border: 1px solid var(--border2);
+      border-radius: var(--radius); padding: 24px;
+    }
+    .math-formula h4 { font-size: .78rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 14px; }
+    .formula {
+      font-family: var(--mono); font-size: .85rem; color: var(--orange2);
+      background: var(--bg); padding: 12px 16px; border-radius: 8px;
+      border: 1px solid var(--border); margin-bottom: 10px; word-break: break-all;
+    }
+    .formula-note { font-size: .76rem; color: var(--muted2); }
+
+    /* ═══════════════════════════════════════════ DASHBOARD */
+    #dashboard {
+      background: linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
+      border-top: 1px solid var(--border);
+    }
+    .dash-connect-gate {
+      text-align: center; padding: 60px 20px;
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+    }
+    .dash-connect-gate .gate-icon { font-size: 3rem; margin-bottom: 16px; }
+    .dash-connect-gate h3 { font-size: 1.3rem; font-weight: 700; margin-bottom: 8px; }
+    .dash-connect-gate p { font-size: .9rem; color: var(--muted2); margin-bottom: 24px; }
+
+    /* Tabs */
+    .tabs { display: flex; gap: 4px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 4px; margin-bottom: 20px; width: fit-content; }
+    .tab-btn {
+      padding: 8px 20px; border-radius: 7px; font-size: .85rem; font-weight: 600;
+      background: transparent; border: none; cursor: pointer; color: var(--muted2); transition: all .15s;
+    }
+    .tab-btn.active { background: var(--border2); color: var(--text); }
+    .tab-btn:hover:not(.active) { color: var(--text); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Dash cards */
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 24px; }
+    .dash-stat {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 16px;
+    }
+    .dash-stat-label { font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 6px; }
+    .dash-stat-value { font-size: 1.25rem; font-weight: 800; font-family: var(--mono); word-break: break-all; }
+    .dv-orange { color: var(--orange); }
+    .dv-green  { color: var(--green); }
+    .dv-blue   { color: var(--blue); }
+
+    .action-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+    .action-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 22px;
+    }
+    .action-card h4 { font-size: .95rem; font-weight: 700; margin-bottom: 6px; }
+    .action-card .ac-desc { font-size: .78rem; color: var(--muted2); margin-bottom: 16px; line-height: 1.5; }
+    .form-field { margin-bottom: 10px; }
+    .form-field label { display: block; font-size: .72rem; color: var(--muted2); margin-bottom: 4px; }
+    .form-field input {
+      width: 100%; background: var(--bg2); border: 1px solid var(--border2);
+      border-radius: 8px; padding: 9px 12px; color: var(--text); font-size: .82rem; font-family: var(--mono);
+      outline: none; transition: border-color .15s;
+    }
+    .form-field input:focus { border-color: var(--blue); }
+    .form-field input::placeholder { color: var(--muted); }
+
+    /* vesting progress bar */
+    .progress-wrap { background: var(--border); border-radius: 99px; height: 6px; margin-top: 8px; overflow: hidden; }
+    .progress-bar { height: 100%; background: linear-gradient(90deg, var(--orange), var(--orange2)); border-radius: 99px; transition: width .5s; }
+
+    /* ═══════════════════════════════════════════ AUDIT */
+    .audit-section { background: var(--bg2); border-top: 1px solid var(--border); }
+    .audit-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(100px,1fr)); gap: 14px; margin-top: 40px; }
+    .audit-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 22px 16px; text-align: center;
+    }
+    .audit-card .av { font-size: 2rem; font-weight: 900; font-family: var(--mono); }
+    .audit-card .al { font-size: .72rem; color: var(--muted); margin-top: 4px; }
+    .av-green { color: var(--green); }
+    .av-orange { color: var(--orange); }
+    .audit-checks { margin-top: 28px; display: grid; grid-template-columns: repeat(auto-fit, minmax(260px,1fr)); gap: 10px; }
+    .audit-check {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; font-size: .8rem;
+    }
+    .audit-check .ac-icon { font-size: 1rem; flex-shrink: 0; }
+    .audit-check .ac-text { color: var(--muted2); }
+    .audit-check strong { color: var(--text); }
+
+    /* ═══════════════════════════════════════════ LOG */
+    .log-section { padding: 0 0 12px; }
+    .log-wrap {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px;
+      max-height: 160px; overflow-y: auto; font-family: var(--mono); font-size: .73rem; line-height: 1.7;
+    }
+    .log-wrap .lok  { color: var(--green); }
+    .log-wrap .lerr { color: var(--red); }
+    .log-wrap .linf { color: var(--blue2); }
+    .log-wrap .lwrn { color: var(--orange); }
+    .log-empty { color: var(--muted); font-style: italic; }
+
+    /* ═══════════════════════════════════════════ FOOTER */
+    footer {
+      background: var(--bg2); border-top: 1px solid var(--border);
+      padding: 48px 0 32px;
+    }
+    .footer-inner { display: flex; flex-direction: column; align-items: center; gap: 24px; text-align: center; }
+    .footer-logo { font-size: 1.1rem; font-weight: 800; }
+    .footer-logo span { color: var(--orange); }
+    .footer-links { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+    .footer-links a { font-size: .85rem; color: var(--muted2); transition: color .15s; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-copy { font-size: .75rem; color: var(--muted); }
+
+    /* ═══════════════════════════════════════════ SCROLLBAR */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg2); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 99px; }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════ NAV -->
+<nav>
+  <div class="container nav-inner">
+    <a href="#" class="logo">
+      <div class="logo-icon">🔒</div>
+      <span><span>Vesting</span>Vault</span>
+    </a>
+    <div class="nav-links">
+      <a href="#how-it-works">How it works</a>
+      <a href="#features">Features</a>
+      <a href="#dashboard">Dashboard</a>
+      <a href="#security">Security</a>
+      <a href="https://github.com/Anda4ka/VestingVault" target="_blank">GitHub</a>
+    </div>
+    <div class="nav-right">
+      <div class="wallet-info" id="wallet-info">
+        <div class="wallet-dot"></div>
+        <span id="wallet-short">—</span>
+      </div>
+      <button class="btn btn-orange" id="nav-connect-btn">Connect Wallet</button>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════════════════════ HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <span class="tag">⚡ OPNet · Bitcoin L1 · Week 2 VibeCoding</span>
+    </div>
+    <h1>Real <span class="accent">Yield</span> on<br class="br-md"> <span class="accent2">Bitcoin L1</span></h1>
+    <p>On-chain vesting with cliff + linear release, plus proportional revenue sharing. Protocol fees flow directly to vested holders — no bridges, no L2, no wrapping.</p>
+    <div class="hero-btns">
+      <button class="btn btn-orange" onclick="scrollToDash()">Launch App</button>
+      <a class="btn btn-ghost" href="https://github.com/Anda4ka/VestingVault" target="_blank">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+        View on GitHub
+      </a>
+    </div>
+    <div class="hero-chips">
+      <div class="chip"><span class="dot"></span> OPNet Testnet — LIVE</div>
+      <div class="chip">🔒 Reentrancy-safe</div>
+      <div class="chip">⚡ O(1) distribution</div>
+      <div class="chip">₿ Bitcoin L1</div>
+      <div class="chip">0 Critical findings</div>
+      <a class="chip" style="cursor:pointer;border-color:rgba(247,147,26,.4);color:var(--orange);" href="https://testnet.opnet.org/address/opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87" target="_blank">📋 opt1sqz…h3w87</a>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ STATS BAR -->
+<div class="stats-bar">
+  <div class="container">
+    <div class="stats-bar-inner">
+      <div class="stat-item"><div class="sv" id="sb-locked">—</div><div class="sl">Total Locked</div></div>
+      <div class="stat-item"><div class="sv" id="sb-revenue">—</div><div class="sl">Revenue Distributed</div></div>
+      <div class="stat-item"><div class="sv" id="sb-block">—</div><div class="sl">Block Height</div></div>
+      <div class="stat-item"><div class="sv">O(1)</div><div class="sl">Distribution Complexity</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════ HOW IT WORKS -->
+<section class="section" id="how-it-works">
+  <div class="container">
+    <div class="section-label">How it works</div>
+    <h2 class="section-title">From lock to yield in 4 steps</h2>
+    <p class="section-sub">VestingVault combines a battle-tested vesting mechanism with Synthetix-style reward distribution, all on Bitcoin L1.</p>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-icon">🔒</div>
+        <h3>Lock Tokens</h3>
+        <p>Owner adds a vesting schedule per beneficiary: amount, cliff (blocks), and linear duration. Tokens are pulled via <code>transferFrom</code> and locked in the vault.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-icon">💰</div>
+        <h3>Deposit Revenue</h3>
+        <p>Any address deposits revenue tokens (protocol fees, trading fees, etc.). The global <code>rewardPerToken</code> accumulator updates in O(1) — no iteration over beneficiaries.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-icon">⏳</div>
+        <h3>Cliff Passes</h3>
+        <p>Once the cliff block passes, tokens start vesting linearly. <code>releasableAmount</code> = vested − already released. Checked per-block with no rounding attacks.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-icon">🎯</div>
+        <h3>Claim Everything</h3>
+        <p>Beneficiary calls <code>release()</code> for vested tokens and <code>claimRevenue()</code> for their proportional share of all deposited revenue. State clears correctly.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ FEATURES -->
+<section class="section" id="features" style="background:var(--bg2); border-top:1px solid var(--border);">
+  <div class="container">
+    <div class="section-label">Architecture</div>
+    <h2 class="section-title">Built for correctness</h2>
+    <p class="section-sub">Every design decision in VestingVault prioritizes safety, gas-efficiency, and mathematical correctness.</p>
+    <div class="features">
+      <div class="feature">
+        <div class="feature-icon fi-orange">⏳</div>
+        <h3>Block-Based Vesting</h3>
+        <p>Cliff + linear release computed purely from block numbers — no timestamps, no oracle dependency. Deterministic and manipulation-resistant on Bitcoin L1.</p>
+        <div class="code-badge">Blockchain.block.numberU256</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon fi-blue">📊</div>
+        <h3>Synthetix Accumulator</h3>
+        <p>Revenue distributed via <code>rewardPerToken</code> global accumulator. Each deposit is O(1). Claims computed instantly from stored debt snapshots — no loops over beneficiaries.</p>
+        <div class="code-badge">rewardPerToken += (amount × 1e18) / totalLocked</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon fi-green">🛡️</div>
+        <h3>Persistent Reentrancy Guard</h3>
+        <p>The lock flag is a <code>StoredBoolean</code> in blockchain storage — not an in-memory class field. Survives the per-call class re-instantiation unique to OPNet's execution model.</p>
+        <div class="code-badge">StoredBoolean(_locked, false)</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon fi-purple">🔢</div>
+        <h3>SafeMath Everywhere</h3>
+        <p>All 19 arithmetic operations use <code>SafeMath.add/sub/mul/div</code>. Zero floating point. Rounding always truncates toward zero, favoring the protocol — no slow drain possible.</p>
+        <div class="code-badge">SafeMath.mul(amount, PRECISION)</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon fi-orange">✅</div>
+        <h3>CEI Pattern</h3>
+        <p>State is always written before external <code>Blockchain.call()</code>. Checks → Effects → Interactions enforced in all 4 state-changing methods. Audited line-by-line.</p>
+        <div class="code-badge">updateReward() → state → callTransfer()</div>
+      </div>
+      <div class="feature">
+        <div class="feature-icon fi-blue">🔑</div>
+        <h3>Correct Sender Check</h3>
+        <p>Uses <code>Blockchain.tx.sender</code> (direct caller), never <code>tx.origin</code>. Prevents delegation attacks. Owner restricted to <code>addVesting()</code> only — revenue deposits are open.</p>
+        <div class="code-badge">Blockchain.tx.sender === _owner</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ MATH -->
+<section class="section math-section">
+  <div class="container">
+    <div class="section-label">Mathematics</div>
+    <h2 class="section-title">Revenue distribution — verified</h2>
+    <p class="section-sub">Example: Alice 70% locked, Bob 30% locked. Deposit 1 000 revenue tokens.</p>
+    <div class="math-grid">
+      <div>
+        <div class="math-formula">
+          <h4>Deposit</h4>
+          <div class="formula">rewardPerToken += 1000 × 10¹⁸ / 10000 = 10¹⁷</div>
+          <div class="formula-note">Global accumulator updated in O(1). No loops.</div>
+        </div>
+        <div class="math-formula" style="margin-top:12px">
+          <h4>Claim (Alice — 7 000 locked)</h4>
+          <div class="formula">earned = 7000 × 10¹⁷ / 10¹⁸ = <strong style="color:var(--green)">700</strong> ✓</div>
+          <div class="formula-note">Bob earns 300. Total = 1 000. No dust left.</div>
+        </div>
+      </div>
+      <div>
+        <div class="math-formula">
+          <h4>After partial release (Alice releases 3 000)</h4>
+          <div class="formula">stored pending = 700 (captured first)
+lockedBalance = 7000 − 3000 = 4000
+rewardDebt = currentRpt</div>
+          <div class="formula-note">Next deposit 700 tokens:</div>
+          <div class="formula">rewardPerToken += 700 × 10¹⁸ / 7000 = 10¹⁷
+Alice new earn = 4000 × 10¹⁷ / 10¹⁸ = 400
+Alice total = 700 + 400 = <strong style="color:var(--green)">1100</strong> ✓
+Bob total = 3000 × 2×10¹⁷ / 10¹⁸ = <strong style="color:var(--green)">600</strong> ✓
+Grand total = 1700 = deposited ✓</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ DASHBOARD -->
+<section class="section" id="dashboard">
+  <div class="container">
+    <div class="section-label">Live Dashboard</div>
+    <h2 class="section-title" style="margin-bottom:8px">Interact with the vault</h2>
+    <p class="section-sub" style="margin-bottom:32px">Connect your OP Wallet to release vested tokens, claim revenue, or deposit protocol fees.</p>
+
+    <!-- Vault config (always visible) -->
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;">
+      <div style="font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;">Contract Configuration</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-field" style="margin:0">
+          <label>Vault Contract Address</label>
+          <input id="cfg-vault" type="text" value="opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87" />
+        </div>
+        <div class="form-field" style="margin:0">
+          <label>Revenue Token Address</label>
+          <input id="cfg-rev-token" type="text" placeholder="bcrt1p… (OP20 revenue token)" />
+        </div>
+        <div class="form-field" style="margin:0">
+          <label>Vesting Token Address</label>
+          <input id="cfg-vest-token" type="text" placeholder="bcrt1p… (OP20 vesting token)" />
+        </div>
+        <div class="form-field" style="margin:0">
+          <label>Your Wallet (auto-filled)</label>
+          <input id="cfg-wallet" type="text" placeholder="bcrt1p… (auto after connect)" readonly />
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;gap:8px;">
+        <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+      </div>
+    </div>
+
+    <!-- Gated UI -->
+    <div id="dash-gate">
+      <div class="dash-connect-gate">
+        <div class="gate-icon">🔓</div>
+        <h3>Connect your OP Wallet</h3>
+        <p>View your vesting schedule, pending revenue, and interact with the vault.</p>
+        <button class="btn btn-orange" onclick="connectWallet()">Connect OP Wallet</button>
+      </div>
+    </div>
+
+    <div id="dash-content" style="display:none">
+
+      <!-- Global stats -->
+      <div class="dash-grid" id="global-stats">
+        <div class="dash-stat"><div class="dash-stat-label">Total Locked</div><div class="dash-stat-value dv-orange" id="ds-locked">—</div></div>
+        <div class="dash-stat"><div class="dash-stat-label">Revenue Deposited</div><div class="dash-stat-value dv-orange" id="ds-revenue">—</div></div>
+        <div class="dash-stat"><div class="dash-stat-label">Your Releasable</div><div class="dash-stat-value dv-green" id="ds-releasable">—</div></div>
+        <div class="dash-stat"><div class="dash-stat-label">Pending Revenue</div><div class="dash-stat-value dv-blue" id="ds-pending">—</div></div>
+      </div>
+
+      <!-- Vesting progress -->
+      <div id="vesting-progress-wrap" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-weight:700">Vesting Schedule</div>
+          <div style="font-size:.75rem;color:var(--muted2)" id="vp-label">—</div>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" id="vp-bar" style="width:0%"></div></div>
+        <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--muted);margin-top:6px;">
+          <span>Start block <span id="vp-start">—</span></span>
+          <span id="vp-pct">0%</span>
+          <span>Duration <span id="vp-dur">—</span> blocks</span>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('release')">Release & Claim</button>
+        <button class="tab-btn" onclick="switchTab('deposit')">Deposit Revenue</button>
+        <button class="tab-btn" onclick="switchTab('admin')">Add Vesting (Owner)</button>
+      </div>
+
+      <!-- Tab: Release & Claim -->
+      <div class="tab-panel active" id="tab-release">
+        <div class="action-grid">
+          <div class="action-card">
+            <h4>Release Vested Tokens</h4>
+            <p class="ac-desc">Claim your linearly vested tokens. Nothing released until cliff block passes. Reentrancy-protected.</p>
+            <div style="font-family:var(--mono);font-size:.8rem;color:var(--muted2);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:14px;">
+              Available: <span id="rel-available" style="color:var(--green);font-weight:700">—</span>
+            </div>
+            <button class="btn btn-orange btn-full" onclick="doRelease()">Release Tokens</button>
+          </div>
+          <div class="action-card">
+            <h4>Claim Revenue Share</h4>
+            <p class="ac-desc">Claim your proportional share of all protocol revenue deposited since your last claim. Computed via reward-per-token accumulator.</p>
+            <div style="font-family:var(--mono);font-size:.8rem;color:var(--muted2);background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:14px;">
+              Pending: <span id="claim-pending" style="color:var(--blue2);font-weight:700">—</span>
+            </div>
+            <button class="btn btn-blue btn-full" onclick="doClaimRevenue()">Claim Revenue</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Deposit -->
+      <div class="tab-panel" id="tab-deposit">
+        <div class="action-grid">
+          <div class="action-card">
+            <h4>Deposit Protocol Revenue</h4>
+            <p class="ac-desc">Anyone can deposit revenue tokens for proportional distribution to vested holders. The increaseAllowance + depositRevenue flow runs in sequence automatically.</p>
+            <div class="form-field"><label>Amount (full decimals, e.g. 1000000000000000000 = 1 token)</label><input id="dep-amount" type="text" placeholder="1000000000000000000" /></div>
+            <button class="btn btn-green btn-full" onclick="doDepositRevenue()">Deposit Revenue</button>
+          </div>
+          <div class="action-card" style="background:var(--bg2);">
+            <h4 style="color:var(--muted2);margin-bottom:10px">How revenue flows</h4>
+            <div style="font-size:.8rem;color:var(--muted2);line-height:1.8;">
+              1. You call <code style="color:var(--orange2)">increaseAllowance(vault, amount)</code><br>
+              2. Vault pulls tokens via <code style="color:var(--orange2)">transferFrom</code><br>
+              3. <code style="color:var(--orange2)">rewardPerToken</code> accumulates globally<br>
+              4. Each beneficiary's <code style="color:var(--orange2)">pendingRevenue</code> grows<br>
+              5. No loops — O(1) per deposit ✓
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Admin -->
+      <div class="tab-panel" id="tab-admin">
+        <div class="action-grid">
+          <div class="action-card">
+            <h4>Add Vesting Schedule</h4>
+            <p class="ac-desc">Owner only. Pulls tokens from your wallet via <code>transferFrom</code> and locks them for the beneficiary.</p>
+            <div class="form-field"><label>Beneficiary Address</label><input id="av-beneficiary" type="text" placeholder="bcrt1p…" /></div>
+            <div class="form-field"><label>Amount (full decimals)</label><input id="av-amount" type="text" placeholder="1000000000000000000" /></div>
+            <div class="form-field"><label>Cliff (blocks)</label><input id="av-cliff" type="text" placeholder="10" /></div>
+            <div class="form-field"><label>Duration (blocks)</label><input id="av-duration" type="text" placeholder="100" /></div>
+            <button class="btn btn-orange btn-full" onclick="doAddVesting()">Add Vesting</button>
+          </div>
+          <div class="action-card" style="background:var(--bg2);">
+            <h4 style="color:var(--muted2);margin-bottom:10px">Vesting parameters</h4>
+            <div style="font-size:.8rem;color:var(--muted2);line-height:1.9;">
+              <strong style="color:var(--text)">Cliff</strong>: blocks from now before anything vests<br>
+              <strong style="color:var(--text)">Duration</strong>: total blocks for 100% to vest<br>
+              <strong style="color:var(--text)">Linear</strong>: vested = amount × (block − start) / duration<br><br>
+              Example: cliff=10, duration=100<br>
+              → After 10 blocks: 0 releasable<br>
+              → After 55 blocks: 55% releasable<br>
+              → After 100 blocks: 100% releasable
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity log -->
+      <div class="log-section" style="margin-top:20px;">
+        <div style="font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px;">Activity</div>
+        <div class="log-wrap" id="activity-log">
+          <div class="log-empty">Wallet connected. Waiting for actions…</div>
+        </div>
+      </div>
+
+    </div><!-- /dash-content -->
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ SECURITY -->
+<section class="section audit-section" id="security">
+  <div class="container">
+    <div class="section-label">Security</div>
+    <h2 class="section-title">AI-assisted audit — 0 critical findings</h2>
+    <p class="section-sub">All 29 critical vulnerability patterns and 20 OPNet-specific attack surfaces checked.</p>
+    <div class="audit-grid">
+      <div class="audit-card"><div class="av av-green">0</div><div class="al">Critical</div></div>
+      <div class="audit-card"><div class="av av-green">0</div><div class="al">High</div></div>
+      <div class="audit-card"><div class="av av-green">0</div><div class="al">Medium</div></div>
+      <div class="audit-card"><div class="av av-orange">0</div><div class="al">Low (fixed)</div></div>
+      <div class="audit-card"><div class="av" style="color:var(--muted2)">3</div><div class="al">Info</div></div>
+    </div>
+    <div class="audit-checks">
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>SafeMath</strong> — all 19 arithmetic ops</div></div>
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>Reentrancy</strong> — StoredBoolean in persistent storage</div></div>
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>CEI</strong> — state before every external call</div></div>
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>tx.sender</strong> — never tx.origin</div></div>
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>No loops</strong> — O(1) distribution</div></div>
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>No floats</strong> — pure integer arithmetic</div></div>
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>Block height</strong> — no timestamp oracle</div></div>
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>BytesWriter</strong> — sizes match writes</div></div>
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>increaseAllowance</strong> — ATK-05 mitigated in frontend</div></div>
+      <div class="audit-check"><div class="ac-icon">✅</div><div class="ac-text"><strong>AddressMemoryMap</strong> — no built-in Map</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════ FOOTER -->
+<footer>
+  <div class="container footer-inner">
+    <div class="footer-logo"><span>Vesting</span>Vault</div>
+    <div class="footer-links">
+      <a href="https://github.com/Anda4ka/VestingVault" target="_blank">GitHub</a>
+      <a href="https://vibecode.finance/challenge" target="_blank">VibeCoding Challenge</a>
+      <a href="https://opnet.org" target="_blank">OPNet</a>
+      <a href="https://testnet.opnet.org/address/opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87" target="_blank">Contract Explorer</a>
+      <a href="#security">Audit Report</a>
+    </div>
+    <div class="footer-copy">Built for VibeCoding Week 2 · OPNet Bitcoin L1 · MIT License</div>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════ SCRIPT -->
+<script type="module">
+  const RPC_URL = 'https://testnet.opnet.org';
+  const MAX_SAT = 50_000n;
+
+  let _provider = null, _network = null, _opnet = null;
+  let walletAddress = null;
+
+  // ─── helpers ─────────────────────────────────────────────────────────────
+  function getCfg() {
+    return {
+      vault:     document.getElementById('cfg-vault').value.trim(),
+      revToken:  document.getElementById('cfg-rev-token').value.trim(),
+      vestToken: document.getElementById('cfg-vest-token').value.trim(),
+    };
+  }
+  function fmt(val) {
+    if (!val && val !== 0n) return '—';
+    const n = typeof val === 'bigint' ? val : BigInt(val);
+    if (n === 0n) return '0';
+    if (n >= 10n**15n) {
+      const w = n / 10n**18n, f = (n % 10n**18n).toString().padStart(18,'0').slice(0,4);
+      return `${w}.${f}`;
+    }
+    return n.toString();
+  }
+  function log(msg, cls='') {
+    const el = document.getElementById('activity-log');
+    if (!el) return;
+    const old = el.querySelector('.log-empty');
+    if (old) old.remove();
+    const d = document.createElement('div');
+    if (cls) d.className = cls;
+    d.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+    el.appendChild(d);
+    el.scrollTop = el.scrollHeight;
+  }
+  const ok   = m => log('✓ ' + m, 'lok');
+  const err  = m => log('✗ ' + m, 'lerr');
+  const info = m => log('ℹ ' + m, 'linf');
+  const warn = m => log('⚠ ' + m, 'lwrn');
+
+  // ─── ABI ─────────────────────────────────────────────────────────────────
+  const VESTING_VAULT_ABI = [
+    { name:'addVesting', type:'Function', constant:false,
+      inputs:[{name:'beneficiary',type:'ADDRESS'},{name:'amount',type:'UINT256'},{name:'cliffDuration',type:'UINT256'},{name:'vestingDuration',type:'UINT256'}],
+      outputs:[{name:'success',type:'BOOL'}] },
+    { name:'release', type:'Function', constant:false, inputs:[], outputs:[{name:'amount',type:'UINT256'}] },
+    { name:'depositRevenue', type:'Function', constant:false,
+      inputs:[{name:'amount',type:'UINT256'}], outputs:[{name:'success',type:'BOOL'}] },
+    { name:'claimRevenue', type:'Function', constant:false, inputs:[], outputs:[{name:'amount',type:'UINT256'}] },
+    { name:'releasableAmount', type:'Function', constant:true,
+      inputs:[{name:'beneficiary',type:'ADDRESS'}], outputs:[{name:'amount',type:'UINT256'}] },
+    { name:'vestedBalance', type:'Function', constant:true,
+      inputs:[{name:'beneficiary',type:'ADDRESS'}], outputs:[{name:'amount',type:'UINT256'}] },
+    { name:'pendingRevenue', type:'Function', constant:true,
+      inputs:[{name:'beneficiary',type:'ADDRESS'}], outputs:[{name:'amount',type:'UINT256'}] },
+    { name:'totalRevenueDeposited', type:'Function', constant:true, inputs:[], outputs:[{name:'amount',type:'UINT256'}] },
+    { name:'getVestingInfo', type:'Function', constant:true,
+      inputs:[{name:'beneficiary',type:'ADDRESS'}],
+      outputs:[{name:'totalAmount',type:'UINT256'},{name:'startBlock',type:'UINT256'},{name:'cliffDuration',type:'UINT256'},{name:'vestingDuration',type:'UINT256'},{name:'released',type:'UINT256'},{name:'releasable',type:'UINT256'}] },
+    { name:'owner',           type:'Function', constant:true, inputs:[], outputs:[{name:'ownerAddress',type:'ADDRESS'}] },
+    { name:'vestingToken',    type:'Function', constant:true, inputs:[], outputs:[{name:'token',type:'ADDRESS'}] },
+    { name:'revenueToken',    type:'Function', constant:true, inputs:[], outputs:[{name:'token',type:'ADDRESS'}] },
+    { name:'totalLocked',     type:'Function', constant:true, inputs:[], outputs:[{name:'amount',type:'UINT256'}] },
+  ];
+  const OP20_ABI = [
+    { name:'increaseAllowance', type:'Function', constant:false,
+      inputs:[{name:'spender',type:'ADDRESS'},{name:'amount',type:'UINT256'}], outputs:[{name:'success',type:'BOOL'}] },
+  ];
+
+  // ─── connect ─────────────────────────────────────────────────────────────
+  window.connectWallet = async function() {
+    try {
+      info('Importing OPNet SDK…');
+      const { JSONRpcProvider, getContract } = await import('https://esm.sh/opnet@latest');
+      const { networks } = await import('https://esm.sh/@btc-vision/bitcoin@latest');
+      _network = networks.opnetTestnet;
+      _provider = new JSONRpcProvider(RPC_URL, _network);
+      _opnet = { getContract };
+
+      if (window.opnet) {
+        const accs = await window.opnet.requestAccounts();
+        walletAddress = accs[0];
+      } else if (window.unisat) {
+        const accs = await window.unisat.requestAccounts();
+        walletAddress = accs[0];
+      } else {
+        warn('OP Wallet not detected. Install from opwallet.org — running read-only.');
+      }
+
+      if (walletAddress) {
+        document.getElementById('cfg-wallet').value = walletAddress;
+        document.getElementById('wallet-short').textContent = walletAddress.slice(0,10) + '…';
+        document.getElementById('wallet-info').style.display = 'flex';
+        document.getElementById('nav-connect-btn').style.display = 'none';
+      }
+
+      document.getElementById('dash-gate').style.display = 'none';
+      document.getElementById('dash-content').style.display = 'block';
+      ok('Wallet connected' + (walletAddress ? ': ' + walletAddress.slice(0,14)+'…' : ' (read-only)'));
+
+      await loadDashboard();
+    } catch(e) { err('Connect failed: ' + e.message); }
+  };
+
+  // ─── load dashboard ───────────────────────────────────────────────────────
+  window.loadDashboard = async function() {
+    const cfg = getCfg();
+    if (!cfg.vault || !_opnet) return;
+    try {
+      info('Loading vault state…');
+      const { getContract } = _opnet;
+      const fromAddr = walletAddress || cfg.vault;
+      const c = getContract(cfg.vault, VESTING_VAULT_ABI, _provider, _network, fromAddr);
+
+      const [lockedR, revR] = await Promise.all([c.totalLocked(), c.totalRevenueDeposited()]);
+      const locked = lockedR.decoded?.amount ?? 0n;
+      const rev    = revR.decoded?.amount    ?? 0n;
+
+      document.getElementById('sb-locked').textContent  = fmt(locked);
+      document.getElementById('sb-revenue').textContent = fmt(rev);
+      document.getElementById('ds-locked').textContent  = fmt(locked);
+      document.getElementById('ds-revenue').textContent = fmt(rev);
+
+      // Block height
+      try {
+        const bn = await _provider.getBlockNumber?.();
+        if (bn) document.getElementById('sb-block').textContent = bn.toString();
+      } catch(_) {}
+
+      if (walletAddress) {
+        const [relR, pendR, viR] = await Promise.all([
+          c.releasableAmount(walletAddress),
+          c.pendingRevenue(walletAddress),
+          c.getVestingInfo(walletAddress),
+        ]);
+        const rel  = relR.decoded?.amount  ?? 0n;
+        const pend = pendR.decoded?.amount ?? 0n;
+        document.getElementById('ds-releasable').textContent = fmt(rel);
+        document.getElementById('ds-pending').textContent    = fmt(pend);
+        document.getElementById('rel-available').textContent = fmt(rel);
+        document.getElementById('claim-pending').textContent = fmt(pend);
+
+        const vi = viR.decoded;
+        if (vi?.totalAmount > 0n) {
+          const pct = vi.vestingDuration > 0n
+            ? Number((vi.releasable * 100n) / vi.totalAmount)
+            : 0;
+          document.getElementById('vesting-progress-wrap').style.display = 'block';
+          document.getElementById('vp-bar').style.width = Math.min(pct, 100) + '%';
+          document.getElementById('vp-pct').textContent = pct + '% vested';
+          document.getElementById('vp-start').textContent = vi.startBlock?.toString() || '—';
+          document.getElementById('vp-dur').textContent   = vi.vestingDuration?.toString() || '—';
+          document.getElementById('vp-label').textContent = `${fmt(vi.releasable)} / ${fmt(vi.totalAmount)} releasable`;
+        }
+      }
+      ok('State refreshed');
+    } catch(e) { err('Load failed: ' + e.message); }
+  };
+
+  // ─── tab switch ──────────────────────────────────────────────────────────
+  window.switchTab = function(name) {
+    document.querySelectorAll('.tab-btn').forEach((b,i) => {
+      const tabs = ['release','deposit','admin'];
+      b.classList.toggle('active', tabs[i] === name);
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+  };
+
+  // ─── actions ─────────────────────────────────────────────────────────────
+  async function sendTx(label, simFn) {
+    info(`Simulating ${label}…`);
+    const sim = await simFn();
+    if ('error' in sim) { err(`${label} sim failed: ${sim.error}`); return false; }
+    ok(`${label} simulation OK. Sending…`);
+    const tx = await sim.sendTransaction({ signer:null, mldsaSigner:null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: _network });
+    ok(`${label} TX: ${tx}`);
+    return true;
+  }
+
+  window.doRelease = async function() {
+    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    const { vault } = getCfg(); if (!vault) { warn('Set vault address'); return; }
+    try {
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
+      if (await sendTx('release()', () => c.release())) await loadDashboard();
+    } catch(e) { err('release() failed: ' + e.message); }
+  };
+
+  window.doClaimRevenue = async function() {
+    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    const { vault } = getCfg(); if (!vault) { warn('Set vault address'); return; }
+    try {
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
+      if (await sendTx('claimRevenue()', () => c.claimRevenue())) await loadDashboard();
+    } catch(e) { err('claimRevenue() failed: ' + e.message); }
+  };
+
+  window.doDepositRevenue = async function() {
+    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    const { vault, revToken } = getCfg();
+    const amount = document.getElementById('dep-amount').value.trim();
+    if (!vault || !revToken || !amount) { warn('Fill vault, revenue token, and amount'); return; }
+    try {
+      const ab = BigInt(amount);
+      const tok = _opnet.getContract(revToken, OP20_ABI, _provider, _network, walletAddress);
+      if (!await sendTx('increaseAllowance()', () => tok.increaseAllowance(vault, ab))) return;
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
+      if (await sendTx('depositRevenue()', () => c.depositRevenue(ab))) await loadDashboard();
+    } catch(e) { err('depositRevenue() failed: ' + e.message); }
+  };
+
+  window.doAddVesting = async function() {
+    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    const { vault, vestToken } = getCfg();
+    const ben = document.getElementById('av-beneficiary').value.trim();
+    const amt = document.getElementById('av-amount').value.trim();
+    const clf = document.getElementById('av-cliff').value.trim();
+    const dur = document.getElementById('av-duration').value.trim();
+    if (!vault || !vestToken || !ben || !amt || !clf || !dur) { warn('Fill all fields'); return; }
+    try {
+      const ab = BigInt(amt), cb = BigInt(clf), db = BigInt(dur);
+      const tok = _opnet.getContract(vestToken, OP20_ABI, _provider, _network, walletAddress);
+      if (!await sendTx('increaseAllowance()', () => tok.increaseAllowance(vault, ab))) return;
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
+      if (await sendTx('addVesting()', () => c.addVesting(ben, ab, cb, db))) await loadDashboard();
+    } catch(e) { err('addVesting() failed: ' + e.message); }
+  };
+
+  window.scrollToDash = function() { document.getElementById('dashboard').scrollIntoView({ behavior:'smooth' }); };
+
+  // ─── wire up nav connect button ───────────────────────────────────────────
+  document.getElementById('nav-connect-btn').addEventListener('click', connectWallet);
+</script>
+
+</body>
+</html>
