@@ -6,7 +6,7 @@
 |-----|-------|
 | Contract Address | `opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87` |
 | Network | OPNet Testnet (Signet fork) |
-| Explorer | https://testnet.opnet.org/address/opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87 |
+| Explorer | https://opscan.org/address/opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87 |
 
 ---
 
