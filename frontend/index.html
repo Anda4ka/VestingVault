@@ -386,8 +386,8 @@
     try {
       const c = window._opnet.getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
       const ownerR = await c.owner();
-      if (ownerR?.decoded?.ownerAddress) {
-        _ownerAddrForSim = ownerR.decoded.ownerAddress;
+      if (ownerR?.properties?.ownerAddress) {
+        _ownerAddrForSim = ownerR.properties.ownerAddress;
         console.log('[getFromAddr] cached owner addr');
       }
     } catch(e) { console.warn('[getFromAddr] owner() failed:', e.message); }
@@ -590,9 +590,10 @@
         contract.totalRevenueDeposited(),
       ]);
 
-      document.getElementById('s-owner').textContent        = ownerR.decoded?.ownerAddress || '—';
-      document.getElementById('s-total-locked').textContent = fmt(totalLockedR.decoded?.amount);
-      document.getElementById('s-total-revenue').textContent = fmt(totalRevR.decoded?.amount);
+      const ownerAddrObj = ownerR.properties?.ownerAddress;
+      document.getElementById('s-owner').textContent = ownerAddrObj?.p2trAddress?.() || ownerAddrObj?.toString?.() || (ownerAddrObj ? '[Address]' : '—');
+      document.getElementById('s-total-locked').textContent = fmt(totalLockedR.properties?.amount);
+      document.getElementById('s-total-revenue').textContent = fmt(totalRevR.properties?.amount);
 
       if (walletAddress && _walletAddrObj) {
         const [relR, pendR, vestedR, infoR] = await Promise.all([
@@ -602,11 +603,11 @@
           contract.getVestingInfo(_walletAddrObj),
         ]);
 
-        document.getElementById('s-releasable').textContent  = fmt(relR.decoded?.amount);
-        document.getElementById('s-pending-rev').textContent = fmt(pendR.decoded?.amount);
-        document.getElementById('s-vested').textContent      = fmt(vestedR.decoded?.amount);
+        document.getElementById('s-releasable').textContent  = fmt(relR.properties?.amount);
+        document.getElementById('s-pending-rev').textContent = fmt(pendR.properties?.amount);
+        document.getElementById('s-vested').textContent      = fmt(vestedR.properties?.amount);
 
-        const vi = infoR.decoded;
+        const vi = infoR.properties;
         if (vi && vi.totalAmount > 0n) {
           document.getElementById('vesting-info-card').style.display = 'block';
           document.getElementById('vi-total').value     = fmt(vi.totalAmount);

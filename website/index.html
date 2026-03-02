@@ -742,8 +742,8 @@ Grand total = 1700 = deposited ✓</div>
       const ownerR = await c.owner();
       // Log the full raw result so we can see the exact structure
       console.log('[getFromAddr] ownerR keys:', ownerR && Object.keys(ownerR));
-      console.log('[getFromAddr] ownerR.decoded:', ownerR?.decoded && JSON.stringify(ownerR.decoded, (k,v) => typeof v === 'bigint' ? v.toString() : v));
-      const ownerAddr = ownerR?.decoded?.ownerAddress;
+      console.log('[getFromAddr] ownerR.properties:', ownerR?.properties && JSON.stringify(ownerR.properties, (k,v) => typeof v === 'bigint' ? v.toString() : v));
+      const ownerAddr = ownerR?.properties?.ownerAddress;
       console.log('[getFromAddr] ownerAddr type:', typeof ownerAddr, 'value:', ownerAddr, 'keys:', ownerAddr && Object.keys(ownerAddr));
       if (ownerAddr) {
         _ownerAddrForSim = ownerAddr;
@@ -933,8 +933,8 @@ Grand total = 1700 = deposited ✓</div>
       const c = getContract(cfg.vault, VESTING_VAULT_ABI, _provider, _network, fromAddr);
 
       const [lockedR, revR] = await Promise.all([c.totalLocked(), c.totalRevenueDeposited()]);
-      const locked = lockedR.decoded?.amount ?? 0n;
-      const rev    = revR.decoded?.amount    ?? 0n;
+      const locked = lockedR.properties?.amount ?? 0n;
+      const rev    = revR.properties?.amount    ?? 0n;
 
       document.getElementById('sb-locked').textContent  = fmt(locked);
       document.getElementById('sb-revenue').textContent = fmt(rev);
@@ -953,14 +953,14 @@ Grand total = 1700 = deposited ✓</div>
           c.pendingRevenue(_walletAddrObj),
           c.getVestingInfo(_walletAddrObj),
         ]);
-        const rel  = relR.decoded?.amount  ?? 0n;
-        const pend = pendR.decoded?.amount ?? 0n;
+        const rel  = relR.properties?.amount  ?? 0n;
+        const pend = pendR.properties?.amount ?? 0n;
         document.getElementById('ds-releasable').textContent = fmt(rel);
         document.getElementById('ds-pending').textContent    = fmt(pend);
         document.getElementById('rel-available').textContent = fmt(rel);
         document.getElementById('claim-pending').textContent = fmt(pend);
 
-        const vi = viR.decoded;
+        const vi = viR.properties;
         if (vi?.totalAmount > 0n) {
           const pct = vi.vestingDuration > 0n
             ? Number((vi.releasable * 100n) / vi.totalAmount)
