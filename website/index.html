@@ -723,6 +723,23 @@ Grand total = 1700 = deposited ✓</div>
 
   let _provider = null, _network = null, _opnet = null;
   let walletAddress = null;
+  let _walletAddrObj = null;   // Address object for wallet (needed by SDK)
+  const _addrCache = {};       // cache hex/bech32 → Address objects
+
+  // Convert any address string to an SDK Address object (cached)
+  async function toAddr(address) {
+    if (!address) return null;
+    if (_addrCache[address]) return _addrCache[address];
+    try {
+      const isContract = address.startsWith('0x');
+      const addrObj = await _provider.getPublicKeyInfo(address, isContract);
+      if (addrObj) _addrCache[address] = addrObj;
+      return addrObj || null;
+    } catch(e) {
+      console.warn('toAddr failed for', address, ':', e.message);
+      return null;
+    }
+  }
 
   // ─── helpers ─────────────────────────────────────────────────────────────
   function getCfg() {
@@ -815,6 +832,7 @@ Grand total = 1700 = deposited ✓</div>
         document.getElementById('wallet-short').textContent = walletAddress.slice(0,10) + '…';
         document.getElementById('wallet-info').style.display = 'flex';
         document.getElementById('nav-connect-btn').style.display = 'none';
+        _walletAddrObj = await toAddr(walletAddress);
       }
 
       document.getElementById('dash-gate').style.display = 'none';
@@ -832,7 +850,7 @@ Grand total = 1700 = deposited ✓</div>
     try {
       info('Loading vault state…');
       const { getContract } = _opnet;
-      const fromAddr = walletAddress || cfg.vault;
+      const fromAddr = _walletAddrObj || await toAddr(cfg.vault);
       const c = getContract(cfg.vault, VESTING_VAULT_ABI, _provider, _network, fromAddr);
 
       const [lockedR, revR] = await Promise.all([c.totalLocked(), c.totalRevenueDeposited()]);
@@ -850,11 +868,11 @@ Grand total = 1700 = deposited ✓</div>
         if (bn) document.getElementById('sb-block').textContent = bn.toString();
       } catch(_) {}
 
-      if (walletAddress) {
+      if (walletAddress && _walletAddrObj) {
         const [relR, pendR, viR] = await Promise.all([
-          c.releasableAmount(walletAddress),
-          c.pendingRevenue(walletAddress),
-          c.getVestingInfo(walletAddress),
+          c.releasableAmount(_walletAddrObj),
+          c.pendingRevenue(_walletAddrObj),
+          c.getVestingInfo(_walletAddrObj),
         ]);
         const rel  = relR.decoded?.amount  ?? 0n;
         const pend = pendR.decoded?.amount ?? 0n;
@@ -902,44 +920,47 @@ Grand total = 1700 = deposited ✓</div>
   }
 
   window.doRelease = async function() {
-    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !_opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const { vault } = getCfg(); if (!vault) { warn('Set vault address'); return; }
     try {
-      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, _walletAddrObj);
       if (await sendTx('release()', () => c.release())) await loadDashboard();
     } catch(e) { err('release() failed: ' + e.message); }
   };
 
   window.doClaimRevenue = async function() {
-    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !_opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const { vault } = getCfg(); if (!vault) { warn('Set vault address'); return; }
     try {
-      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, _walletAddrObj);
       if (await sendTx('claimRevenue()', () => c.claimRevenue())) await loadDashboard();
     } catch(e) { err('claimRevenue() failed: ' + e.message); }
   };
 
   window.doDepositRevenue = async function() {
-    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !_opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const { vault, revToken } = getCfg();
     const amount = document.getElementById('dep-amount').value.trim();
     if (!vault || !revToken || !amount) { warn('Fill vault, revenue token, and amount'); return; }
     try {
       const ab = BigInt(amount);
-      const tok = _opnet.getContract(revToken, OP20_ABI, _provider, _network, walletAddress);
-      if (!await sendTx('increaseAllowance()', () => tok.increaseAllowance(vault, ab))) return;
-      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
+      const vaultAddr = await toAddr(vault);
+      const tok = _opnet.getContract(revToken, OP20_ABI, _provider, _network, _walletAddrObj);
+      if (!await sendTx('increaseAllowance()', () => tok.increaseAllowance(vaultAddr, ab))) return;
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, _walletAddrObj);
       if (await sendTx('depositRevenue()', () => c.depositRevenue(ab))) await loadDashboard();
     } catch(e) { err('depositRevenue() failed: ' + e.message); }
   };
 
   window.doInitialize = async function() {
-    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !_opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const { vault, vestToken, revToken } = getCfg();
     if (!vault || !vestToken || !revToken) { warn('Fill vault, vesting token, and revenue token addresses'); return; }
     try {
-      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
-      if (await sendTx('initialize()', () => c.initialize(vestToken, revToken))) {
+      const [vestAddr, revAddr] = await Promise.all([toAddr(vestToken), toAddr(revToken)]);
+      if (!vestAddr || !revAddr) { err('Could not resolve token addresses'); return; }
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, _walletAddrObj);
+      if (await sendTx('initialize()', () => c.initialize(vestAddr, revAddr))) {
         ok('Vault initialized! vestingToken and revenueToken are set.');
         await loadDashboard();
       }
@@ -947,7 +968,7 @@ Grand total = 1700 = deposited ✓</div>
   };
 
   window.doAddVesting = async function() {
-    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !_opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const { vault, vestToken } = getCfg();
     const ben = document.getElementById('av-beneficiary').value.trim();
     const amt = document.getElementById('av-amount').value.trim();
@@ -956,10 +977,13 @@ Grand total = 1700 = deposited ✓</div>
     if (!vault || !vestToken || !ben || !amt || !clf || !dur) { warn('Fill all fields'); return; }
     try {
       const ab = BigInt(amt), cb = BigInt(clf), db = BigInt(dur);
-      const tok = _opnet.getContract(vestToken, OP20_ABI, _provider, _network, walletAddress);
-      if (!await sendTx('increaseAllowance()', () => tok.increaseAllowance(vault, ab))) return;
-      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
-      if (await sendTx('addVesting()', () => c.addVesting(ben, ab, cb, db))) await loadDashboard();
+      const [benAddr, vaultAddr] = await Promise.all([toAddr(ben), toAddr(vault)]);
+      if (!benAddr) { err('Could not resolve beneficiary address'); return; }
+      if (!vaultAddr) { err('Could not resolve vault address'); return; }
+      const tok = _opnet.getContract(vestToken, OP20_ABI, _provider, _network, _walletAddrObj);
+      if (!await sendTx('increaseAllowance()', () => tok.increaseAllowance(vaultAddr, ab))) return;
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, _walletAddrObj);
+      if (await sendTx('addVesting()', () => c.addVesting(benAddr, ab, cb, db))) await loadDashboard();
     } catch(e) { err('addVesting() failed: ' + e.message); }
   };
 

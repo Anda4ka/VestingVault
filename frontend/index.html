@@ -373,6 +373,23 @@
   let provider = null;
   let walletAddress = null;
   let network = null;
+  let _walletAddrObj = null;   // Address object for wallet (needed by SDK)
+  const _addrCache = {};       // cache hex/bech32 → Address objects
+
+  // Convert any address string to an SDK Address object (cached)
+  async function toAddr(address) {
+    if (!address) return null;
+    if (_addrCache[address]) return _addrCache[address];
+    try {
+      const isContract = address.startsWith('0x');
+      const addrObj = await provider.getPublicKeyInfo(address, isContract);
+      if (addrObj) _addrCache[address] = addrObj;
+      return addrObj || null;
+    } catch(e) {
+      console.warn('toAddr failed for', address, ':', e.message);
+      return null;
+    }
+  }
 
   // ─── logging ─────────────────────────────────────────────────────────────
   function log(msg, cls = '') {
@@ -473,6 +490,7 @@
         ok(`Wallet connected: ${walletAddress}`);
         document.getElementById('connect-btn').textContent = 'Connected';
         document.getElementById('connect-btn').disabled = true;
+        _walletAddrObj = await toAddr(walletAddress);
       }
 
       // Store provider globally
@@ -496,7 +514,8 @@
     const { getContract } = window._opnet;
     try {
       info('Loading vault state...');
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress || vault);
+      const fromAddr = _walletAddrObj || await toAddr(vault);
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, fromAddr);
 
       const [ownerR, totalLockedR, totalRevR] = await Promise.all([
         contract.owner(),
@@ -508,12 +527,12 @@
       document.getElementById('s-total-locked').textContent = fmt(totalLockedR.decoded?.amount);
       document.getElementById('s-total-revenue').textContent = fmt(totalRevR.decoded?.amount);
 
-      if (walletAddress) {
+      if (walletAddress && _walletAddrObj) {
         const [relR, pendR, vestedR, infoR] = await Promise.all([
-          contract.releasableAmount(walletAddress),
-          contract.pendingRevenue(walletAddress),
-          contract.vestedBalance(walletAddress),
-          contract.getVestingInfo(walletAddress),
+          contract.releasableAmount(_walletAddrObj),
+          contract.pendingRevenue(_walletAddrObj),
+          contract.vestedBalance(_walletAddrObj),
+          contract.getVestingInfo(_walletAddrObj),
         ]);
 
         document.getElementById('s-releasable').textContent  = fmt(relR.decoded?.amount);
@@ -540,13 +559,13 @@
 
   // ─── release ─────────────────────────────────────────────────────────────
   window.doRelease = async function() {
-    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !window._opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const vault = getVaultAddr();
     if (!vault) { warn('Set vault address'); return; }
     try {
       info('Simulating release()...');
       const { getContract } = window._opnet;
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
       const sim = await contract.release();
       if ('error' in sim) { err('Simulation failed: ' + sim.error); return; }
       ok('Simulation OK. Sending...');
@@ -558,13 +577,13 @@
 
   // ─── claimRevenue ────────────────────────────────────────────────────────
   window.doClaimRevenue = async function() {
-    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !window._opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const vault = getVaultAddr();
     if (!vault) { warn('Set vault address'); return; }
     try {
       info('Simulating claimRevenue()...');
       const { getContract } = window._opnet;
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
       const sim = await contract.claimRevenue();
       if ('error' in sim) { err('Simulation failed: ' + sim.error); return; }
       ok('Simulation OK. Sending...');
@@ -576,7 +595,7 @@
 
   // ─── depositRevenue ──────────────────────────────────────────────────────
   window.doDepositRevenue = async function() {
-    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !window._opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const vault = getVaultAddr();
     const revToken = getRevToken();
     const amount = document.getElementById('deposit-amount').value.trim();
@@ -584,18 +603,19 @@
     try {
       const { getContract } = window._opnet;
       const amountBig = BigInt(amount);
+      const vaultAddr = await toAddr(vault);
 
       // Step 1: increaseAllowance (preferred over approve — avoids front-run race)
       info('Increasing allowance for revenue token...');
-      const token = getContract(revToken, OP20_ABI, window._provider, window._network, walletAddress);
-      const approveSim = await token.increaseAllowance(vault, amountBig);
+      const token = getContract(revToken, OP20_ABI, window._provider, window._network, _walletAddrObj);
+      const approveSim = await token.increaseAllowance(vaultAddr, amountBig);
       if ('error' in approveSim) { err('increaseAllowance sim failed: ' + approveSim.error); return; }
       const approveTx = await approveSim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
       ok('increaseAllowance TX: ' + approveTx);
 
       // Step 2: deposit
       info('Depositing revenue...');
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
       const sim = await contract.depositRevenue(amountBig);
       if ('error' in sim) { err('Deposit sim failed: ' + sim.error); return; }
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
@@ -606,7 +626,7 @@
 
   // ─── initialize (one-time owner setup) ──────────────────────────────────
   window.doInitialize = async function() {
-    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !window._opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const vault = getVaultAddr();
     const vestToken = getVestToken();
     const revToken  = getRevToken();
@@ -614,8 +634,10 @@
     try {
       info('Calling initialize()...');
       const { getContract } = window._opnet;
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
-      const sim = await contract.initialize(vestToken, revToken);
+      const [vestAddr, revAddr] = await Promise.all([toAddr(vestToken), toAddr(revToken)]);
+      if (!vestAddr || !revAddr) { err('Could not resolve token addresses'); return; }
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
+      const sim = await contract.initialize(vestAddr, revAddr);
       if ('error' in sim) { err('initialize() sim failed: ' + sim.error); return; }
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
       ok('initialize() TX: ' + tx + ' — vault is now ready!');
@@ -625,7 +647,7 @@
 
   // ─── addVesting (owner) ──────────────────────────────────────────────────
   window.doAddVesting = async function() {
-    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    if (!walletAddress || !window._opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const vault = getVaultAddr();
     const vestToken = getVestToken();
     const beneficiary = document.getElementById('av-beneficiary').value.trim();
@@ -640,19 +662,22 @@
       const amountBig   = BigInt(amount);
       const cliffBig    = BigInt(cliff);
       const durationBig = BigInt(duration);
+      const [benAddr, vaultAddr] = await Promise.all([toAddr(beneficiary), toAddr(vault)]);
+      if (!benAddr) { err('Could not resolve beneficiary address'); return; }
+      if (!vaultAddr) { err('Could not resolve vault address'); return; }
 
       // Step 1: increaseAllowance for vesting token (preferred — avoids front-run race)
       info('Increasing allowance for vesting token...');
-      const token = getContract(vestToken, OP20_ABI, window._provider, window._network, walletAddress);
-      const approveSim = await token.increaseAllowance(vault, amountBig);
+      const token = getContract(vestToken, OP20_ABI, window._provider, window._network, _walletAddrObj);
+      const approveSim = await token.increaseAllowance(vaultAddr, amountBig);
       if ('error' in approveSim) { err('increaseAllowance sim failed: ' + approveSim.error); return; }
       const approveTx = await approveSim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
       ok('increaseAllowance TX: ' + approveTx);
 
       // Step 2: addVesting
       info('Calling addVesting()...');
-      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
-      const sim = await contract.addVesting(beneficiary, amountBig, cliffBig, durationBig);
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, _walletAddrObj);
+      const sim = await contract.addVesting(benAddr, amountBig, cliffBig, durationBig);
       if ('error' in sim) { err('addVesting sim failed: ' + sim.error); return; }
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
       ok('addVesting() TX: ' + tx);
