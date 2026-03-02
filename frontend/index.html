@@ -534,7 +534,8 @@
               if (addr) {
                 const pkHex = pk.startsWith('0x') ? pk.slice(2) : pk;
                 const pkBytes = new Uint8Array(pkHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-                addr.legacyPublicKey = pkBytes; // patch 33-byte secp256k1 key onto address
+                // legacyPublicKey has only a getter → use defineProperty to override on the instance
+                Object.defineProperty(addr, 'legacyPublicKey', { get: () => pkBytes, configurable: true });
                 _walletAddrObj = addr;
               }
             }

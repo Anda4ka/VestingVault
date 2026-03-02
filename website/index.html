@@ -876,9 +876,10 @@ Grand total = 1700 = deposited ✓</div>
               if (addr) {
                 const pkHex = pk.startsWith('0x') ? pk.slice(2) : pk;
                 const pkBytes = new Uint8Array(pkHex.match(/.{2}/g).map(b => parseInt(b, 16)));
-                addr.legacyPublicKey = pkBytes; // patch 33-byte secp256k1 key onto address
+                // legacyPublicKey has only a getter → use defineProperty to override on the instance
+                Object.defineProperty(addr, 'legacyPublicKey', { get: () => pkBytes, configurable: true });
                 _walletAddrObj = addr;
-                console.log('[addr debug] legacyPublicKey set:', addr.legacyPublicKey?.length, 'keys:', Object.keys(addr).join(','));
+                console.log('[addr debug] legacyPublicKey set:', addr.legacyPublicKey?.length, 'all props:', JSON.stringify(Object.keys(addr)));
               }
             }
           }
