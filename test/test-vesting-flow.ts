@@ -30,7 +30,7 @@ import { VESTING_VAULT_ABI } from './vesting-vault-abi';
 // CONFIGURATION — Replace these with your actual deployed addresses
 // ════════════════════════════════════════════════════════════════════════════
 
-const VAULT_ADDRESS          = 'opt1sqplya7jvr5ryduzsrlezps6gfcfznddmeyjghym6';    // ✅ deployed
+const VAULT_ADDRESS          = '0x813078152d97d3181b8e52f64f24451aed1916b7d6c459c5146b098045080089'; // ✅ deployed (hex — opt1 rejected by SDK)
 const VESTING_TOKEN_ADDRESS  = 'bcrt1p...YOUR_VESTING_TOKEN_ADDRESS';              // TODO: fill
 const REVENUE_TOKEN_ADDRESS  = 'bcrt1p...YOUR_REVENUE_TOKEN_ADDRESS';              // TODO: fill
 
