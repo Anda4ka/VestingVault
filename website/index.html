@@ -735,13 +735,21 @@ Grand total = 1700 = deposited ✓</div>
   async function getFromAddr() {
     if (_ownerAddrForSim) return _ownerAddrForSim;
     const cfg = getCfg();
+    console.log('[getFromAddr] vault:', cfg.vault, 'opnet:', !!_opnet);
     if (!cfg.vault || !_opnet) return _walletAddrObj;
     try {
       const c = _opnet.getContract(cfg.vault, VESTING_VAULT_ABI, _provider, _network, _walletAddrObj);
       const ownerR = await c.owner();
-      if (ownerR?.decoded?.ownerAddress) {
-        _ownerAddrForSim = ownerR.decoded.ownerAddress;
-        console.log('[getFromAddr] cached owner addr, keys:', Object.keys(_ownerAddrForSim));
+      // Log the full raw result so we can see the exact structure
+      console.log('[getFromAddr] ownerR keys:', ownerR && Object.keys(ownerR));
+      console.log('[getFromAddr] ownerR.decoded:', ownerR?.decoded && JSON.stringify(ownerR.decoded, (k,v) => typeof v === 'bigint' ? v.toString() : v));
+      const ownerAddr = ownerR?.decoded?.ownerAddress;
+      console.log('[getFromAddr] ownerAddr type:', typeof ownerAddr, 'value:', ownerAddr, 'keys:', ownerAddr && Object.keys(ownerAddr));
+      if (ownerAddr) {
+        _ownerAddrForSim = ownerAddr;
+        console.log('[getFromAddr] cached! Object.keys:', Object.keys(_ownerAddrForSim));
+      } else {
+        console.warn('[getFromAddr] ownerAddress is falsy — vault may not be deployed by this wallet or _owner is zero');
       }
     } catch(e) { console.warn('[getFromAddr] owner() fetch failed:', e.message); }
     return _ownerAddrForSim || _walletAddrObj;
