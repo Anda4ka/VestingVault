@@ -31,8 +31,8 @@ import { VESTING_VAULT_ABI } from './vesting-vault-abi';
 // ════════════════════════════════════════════════════════════════════════════
 
 const VAULT_ADDRESS          = '0x813078152d97d3181b8e52f64f24451aed1916b7d6c459c5146b098045080089'; // ✅ deployed (hex — opt1 rejected by SDK)
-const VESTING_TOKEN_ADDRESS  = 'bcrt1p...YOUR_VESTING_TOKEN_ADDRESS';              // TODO: fill
-const REVENUE_TOKEN_ADDRESS  = 'bcrt1p...YOUR_REVENUE_TOKEN_ADDRESS';              // TODO: fill
+const VESTING_TOKEN_ADDRESS  = '0xb554371f0cf493f64582acbb7f50c58fd644a2186d63092dbe64d062e67453a7'; // ✅ VestingToken (VEST) — deployed testnet
+const REVENUE_TOKEN_ADDRESS  = '0xdbe1fd1a52d80579d7f1ac7bac951b38084668944168689c3a011a482ccc9793'; // ✅ RevenueToken (REV)  — deployed testnet
 
 // Your wallet address (p2tr taproot address)
 const OWNER_ADDRESS          = 'bcrt1p...YOUR_OWNER_ADDRESS';                      // TODO: fill

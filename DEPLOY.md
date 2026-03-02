@@ -1,12 +1,19 @@
 # VestingVault — Deployment & Testing Guide
 
-## Deployed Contract (OPNet Testnet)
+## Deployed Contracts (OPNet Testnet)
 
-| Key | Value |
-|-----|-------|
-| Contract Address | `opt1sqplya7jvr5ryduzsrlezps6gfcfznddmeyjghym6` |
+| Contract | Bech32 Address | SDK Hex Address |
+|----------|----------------|-----------------|
+| **VestingVault** | `opt1sqplya7jvr5ryduzsrlezps6gfcfznddmeyjghym6` | `0x813078152d97d3181b8e52f64f24451aed1916b7d6c459c5146b098045080089` |
+| **VestingToken (VEST)** | `opt1sqqtyy87j79w4r99tut4nk9ugsmf3a0kk25nndzx7` | `0xb554371f0cf493f64582acbb7f50c58fd644a2186d63092dbe64d062e67453a7` |
+| **RevenueToken (REV)** | `opt1sqreg95wwrx30c9euejk9urulgf98mr9sg5gzeg5v` | `0xdbe1fd1a52d80579d7f1ac7bac951b38084668944168689c3a011a482ccc9793` |
+
+| Parameter | Value |
+|-----------|-------|
 | Network | OPNet Testnet (Signet fork) |
-| Explorer | https://opscan.org/address/opt1sqplya7jvr5ryduzsrlezps6gfcfznddmeyjghym6 |
+| Explorer | https://opscan.org |
+
+> **Note:** Use the SDK Hex Address (`0x...`) for `getContract()`. The bech32 (`opt1...`) format is for explorer/display only.
 
 ---
 
