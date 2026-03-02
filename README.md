@@ -81,6 +81,7 @@ After `release()`: only the **remaining locked** balance earns future revenue.
 
 | Method | Caller | Description |
 |--------|--------|-------------|
+| `initialize(vestingToken, revenueToken)` | Owner | **One-time setup** — sets token addresses after deploy (workaround for testnet 0-byte calldata bug) |
 | `addVesting(beneficiary, amount, cliff, duration)` | Owner | Create vesting schedule, pull tokens via `transferFrom` |
 | `release()` | Beneficiary | Release vested tokens to caller |
 | `depositRevenue(amount)` | Anyone | Deposit revenue for proportional distribution |
@@ -104,6 +105,7 @@ After `release()`: only the **remaining locked** balance earns future revenue.
 
 | Function | Selector |
 |----------|---------|
+| `initialize(address,address)` | `0x67758e02` |
 | `addVesting(address,uint256,uint256,uint256)` | `0x7361c073` |
 | `release()` | `0xca66fa8a` |
 | `depositRevenue(uint256)` | `0x5868922b` |
@@ -170,9 +172,10 @@ See [DEPLOY.md](./DEPLOY.md) for the full step-by-step guide.
 1. Build the contract (`npm run build`)
 2. Open **OP Wallet** → Switch to OPNet Testnet
 3. Click **Deploy** → drag `build/VestingVault.wasm`
-4. Provide constructor calldata: `vestingToken` address + `revenueToken` address
+4. **No constructor calldata needed** — leave it empty (known OPNet node bug: calldata is 0 bytes on deploy)
 5. Confirm the 2 BTC transactions (fund + reveal)
 6. Note the deployed contract address
+7. Call `initialize(vestingToken, revenueToken)` once as owner — sets token addresses post-deploy
 
 ---
 
@@ -191,14 +194,16 @@ const BENEFICIARY_ADDRESS = 'bcrt1p...YOUR_BENEFICIARY_ADDRESS';
 Then run each step:
 
 ```
-Step 1: Owner approves vestingToken
-Step 2: Owner calls addVesting()
-Step 3: Depositor approves revenueToken
-Step 4: Depositor calls depositRevenue()
-Step 5: [Wait for cliff blocks to pass on testnet]
-Step 6: Beneficiary calls release()
-Step 7: Beneficiary calls claimRevenue()
-Step 8: Verify getVestingInfo() / pendingRevenue() == 0
+Step 0: Deploy contract (no calldata) — note the new vault address
+Step 1: Owner calls initialize(vestingToken, revenueToken)  ← one-time setup
+Step 2: Owner approves vestingToken
+Step 3: Owner calls addVesting()
+Step 4: Depositor approves revenueToken
+Step 5: Depositor calls depositRevenue()
+Step 6: [Wait for cliff blocks to pass on testnet]
+Step 7: Beneficiary calls release()
+Step 8: Beneficiary calls claimRevenue()
+Step 9: Verify getVestingInfo() / pendingRevenue() == 0
 ```
 
 Expected state after full flow:

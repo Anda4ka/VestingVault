@@ -7,6 +7,16 @@ import { ABIDataTypes, BitcoinAbiTypes, BitcoinInterfaceAbi } from 'opnet';
 export const VESTING_VAULT_ABI: BitcoinInterfaceAbi = [
     // ═══════════ STATE-CHANGING METHODS ═══════════
     {
+        name: 'initialize',
+        type: BitcoinAbiTypes.Function,
+        constant: false,
+        inputs: [
+            { name: 'vestingToken', type: ABIDataTypes.ADDRESS },
+            { name: 'revenueToken', type: ABIDataTypes.ADDRESS },
+        ],
+        outputs: [{ name: 'success', type: ABIDataTypes.BOOL }],
+    },
+    {
         name: 'addVesting',
         type: BitcoinAbiTypes.Function,
         constant: false,

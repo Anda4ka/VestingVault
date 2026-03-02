@@ -100,8 +100,34 @@ export class VestingVault extends OP_NET {
         super();
     }
 
-    // Deployment (runs ONCE on first deploy)
-    public override onDeployment(calldata: Calldata): void {
+    /**
+     * Deployment hook — runs ONCE when the contract is first deployed.
+     *
+     * NOTE: Known OPNet testnet bug — the node passes 0 bytes to onDeploy(),
+     * so we CANNOT read constructor calldata here (BytesReader would throw).
+     * Token addresses are set via the separate initialize() method below.
+     */
+    public override onDeployment(_calldata: Calldata): void {
+        this._owner.value = Blockchain.tx.sender;
+    }
+
+    /**
+     * One-time initializer — sets vestingToken and revenueToken after deployment.
+     * Can only be called once and only by the contract owner.
+     * Must be called before any other protocol interaction.
+     */
+    @method(
+        { name: 'vestingToken', type: ABIDataTypes.ADDRESS },
+        { name: 'revenueToken', type: ABIDataTypes.ADDRESS },
+    )
+    @returns({ name: 'success', type: ABIDataTypes.BOOL })
+    public initialize(calldata: Calldata): BytesWriter {
+        this.onlyOwner();
+
+        if (!this._vestingToken.value.isZero()) {
+            throw new Revert('VestingVault: already initialized');
+        }
+
         const vestingToken: Address = calldata.readAddress();
         const revenueToken: Address = calldata.readAddress();
 
@@ -112,9 +138,12 @@ export class VestingVault extends OP_NET {
             throw new Revert('VestingVault: revenueToken is zero address');
         }
 
-        this._owner.value = Blockchain.tx.sender;
         this._vestingToken.value = vestingToken;
         this._revenueToken.value = revenueToken;
+
+        const writer = new BytesWriter(1);
+        writer.writeBoolean(true);
+        return writer;
     }
 
     // ═══════════════════ STATE-CHANGING METHODS ═══════════════════════════════

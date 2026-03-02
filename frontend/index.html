@@ -228,7 +228,7 @@
     <div class="fields">
       <div class="field">
         <label>Vault Contract Address</label>
-        <input id="vault-addr" type="text" value="opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87" />
+        <input id="vault-addr" type="text" placeholder="opt1...YOUR_NEW_VAULT_ADDRESS" />
       </div>
       <div class="field">
         <label>Your Wallet Address</label>
@@ -332,6 +332,13 @@
       <button class="btn btn-green" onclick="doDepositRevenue()">Deposit Revenue</button>
     </div>
 
+    <!-- Initialize (one-time) -->
+    <div class="action-card" style="border-color:rgba(247,147,26,.4);">
+      <h3>⚙️ Initialize Vault (one-time, owner only)</h3>
+      <p style="font-size:.75rem;color:var(--muted);margin-bottom:10px;">Call once right after deployment. Sets vestingToken and revenueToken from the config fields above. Cannot be changed after initialization.</p>
+      <button class="btn btn-primary" onclick="doInitialize()">Initialize Vault</button>
+    </div>
+
     <!-- Add Vesting (owner) -->
     <div class="action-card">
       <h3>Add Vesting Schedule (Owner)</h3>
@@ -401,6 +408,9 @@
 
   // ─── ABI ─────────────────────────────────────────────────────────────────
   const VESTING_VAULT_ABI = [
+    { name: 'initialize', type: 'Function', constant: false,
+      inputs:[{name:'vestingToken',type:'ADDRESS'},{name:'revenueToken',type:'ADDRESS'}],
+      outputs:[{name:'success',type:'BOOL'}] },
     { name: 'addVesting',  type: 'Function', constant: false,
       inputs: [{name:'beneficiary',type:'ADDRESS'},{name:'amount',type:'UINT256'},{name:'cliffDuration',type:'UINT256'},{name:'vestingDuration',type:'UINT256'}],
       outputs:[{name:'success',type:'BOOL'}] },
@@ -592,6 +602,25 @@
       ok('depositRevenue() TX: ' + tx);
       await loadVaultState();
     } catch(e) { err('depositRevenue() failed: ' + e.message); }
+  };
+
+  // ─── initialize (one-time owner setup) ──────────────────────────────────
+  window.doInitialize = async function() {
+    if (!walletAddress || !window._opnet) { warn('Connect wallet first'); return; }
+    const vault = getVaultAddr();
+    const vestToken = getVestToken();
+    const revToken  = getRevToken();
+    if (!vault || !vestToken || !revToken) { warn('Fill vault, vesting token, and revenue token addresses'); return; }
+    try {
+      info('Calling initialize()...');
+      const { getContract } = window._opnet;
+      const contract = getContract(vault, VESTING_VAULT_ABI, window._provider, window._network, walletAddress);
+      const sim = await contract.initialize(vestToken, revToken);
+      if ('error' in sim) { err('initialize() sim failed: ' + sim.error); return; }
+      const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
+      ok('initialize() TX: ' + tx + ' — vault is now ready!');
+      await loadVaultState();
+    } catch(e) { err('initialize() failed: ' + e.message); }
   };
 
   // ─── addVesting (owner) ──────────────────────────────────────────────────

@@ -388,29 +388,35 @@
 <section class="section" id="how-it-works">
   <div class="container">
     <div class="section-label">How it works</div>
-    <h2 class="section-title">From lock to yield in 4 steps</h2>
+    <h2 class="section-title">From deploy to yield in 4 steps</h2>
     <p class="section-sub">VestingVault combines a battle-tested vesting mechanism with Synthetix-style reward distribution, all on Bitcoin L1.</p>
     <div class="steps">
       <div class="step">
         <div class="step-num">01</div>
+        <div class="step-icon">⚙️</div>
+        <h3>Deploy & Initialize</h3>
+        <p>Deploy the WASM contract (no constructor args needed). Then call <code>initialize(vestingToken, revenueToken)</code> once as owner to configure token addresses. One-time, owner-only, replay-protected.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
         <div class="step-icon">🔒</div>
         <h3>Lock Tokens</h3>
         <p>Owner adds a vesting schedule per beneficiary: amount, cliff (blocks), and linear duration. Tokens are pulled via <code>transferFrom</code> and locked in the vault.</p>
       </div>
       <div class="step">
-        <div class="step-num">02</div>
+        <div class="step-num">03</div>
         <div class="step-icon">💰</div>
         <h3>Deposit Revenue</h3>
         <p>Any address deposits revenue tokens (protocol fees, trading fees, etc.). The global <code>rewardPerToken</code> accumulator updates in O(1) — no iteration over beneficiaries.</p>
       </div>
       <div class="step">
-        <div class="step-num">03</div>
+        <div class="step-num">04</div>
         <div class="step-icon">⏳</div>
         <h3>Cliff Passes</h3>
         <p>Once the cliff block passes, tokens start vesting linearly. <code>releasableAmount</code> = vested − already released. Checked per-block with no rounding attacks.</p>
       </div>
       <div class="step">
-        <div class="step-num">04</div>
+        <div class="step-num">05</div>
         <div class="step-icon">🎯</div>
         <h3>Claim Everything</h3>
         <p>Beneficiary calls <code>release()</code> for vested tokens and <code>claimRevenue()</code> for their proportional share of all deposited revenue. State clears correctly.</p>
@@ -623,6 +629,13 @@ Grand total = 1700 = deposited ✓</div>
 
       <!-- Tab: Admin -->
       <div class="tab-panel" id="tab-admin">
+        <!-- Initialize (one-time setup) -->
+        <div style="background:rgba(247,147,26,.07);border:1px solid rgba(247,147,26,.25);border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;">
+          <h4 style="color:var(--orange);margin-bottom:6px;">⚙️ Step 1 — Initialize Vault (one-time)</h4>
+          <p style="font-size:.82rem;color:var(--muted2);margin-bottom:12px;">Must be called once by owner right after deployment. Sets the vesting token and revenue token addresses. Cannot be changed after initialization.</p>
+          <p style="font-size:.78rem;color:var(--muted);margin-bottom:10px;">Uses <strong style="color:var(--text)">Vesting Token</strong> and <strong style="color:var(--text)">Revenue Token</strong> from the config fields above.</p>
+          <button class="btn btn-orange" style="width:100%" onclick="doInitialize()">Initialize Vault</button>
+        </div>
         <div class="action-grid">
           <div class="action-card">
             <h4>Add Vesting Schedule</h4>
@@ -747,6 +760,9 @@ Grand total = 1700 = deposited ✓</div>
 
   // ─── ABI ─────────────────────────────────────────────────────────────────
   const VESTING_VAULT_ABI = [
+    { name:'initialize', type:'Function', constant:false,
+      inputs:[{name:'vestingToken',type:'ADDRESS'},{name:'revenueToken',type:'ADDRESS'}],
+      outputs:[{name:'success',type:'BOOL'}] },
     { name:'addVesting', type:'Function', constant:false,
       inputs:[{name:'beneficiary',type:'ADDRESS'},{name:'amount',type:'UINT256'},{name:'cliffDuration',type:'UINT256'},{name:'vestingDuration',type:'UINT256'}],
       outputs:[{name:'success',type:'BOOL'}] },
@@ -915,6 +931,19 @@ Grand total = 1700 = deposited ✓</div>
       const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
       if (await sendTx('depositRevenue()', () => c.depositRevenue(ab))) await loadDashboard();
     } catch(e) { err('depositRevenue() failed: ' + e.message); }
+  };
+
+  window.doInitialize = async function() {
+    if (!walletAddress || !_opnet) { warn('Connect wallet first'); return; }
+    const { vault, vestToken, revToken } = getCfg();
+    if (!vault || !vestToken || !revToken) { warn('Fill vault, vesting token, and revenue token addresses'); return; }
+    try {
+      const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, walletAddress);
+      if (await sendTx('initialize()', () => c.initialize(vestToken, revToken))) {
+        ok('Vault initialized! vestingToken and revenueToken are set.');
+        await loadDashboard();
+      }
+    } catch(e) { err('initialize() failed: ' + e.message); }
   };
 
   window.doAddVesting = async function() {

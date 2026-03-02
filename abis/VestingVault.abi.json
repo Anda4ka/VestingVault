@@ -1,6 +1,28 @@
 {
     "functions": [
         {
+            "name": "initialize",
+            "type": "Function",
+            "payable": false,
+            "onlyOwner": false,
+            "inputs": [
+                {
+                    "name": "vestingToken",
+                    "type": "ADDRESS"
+                },
+                {
+                    "name": "revenueToken",
+                    "type": "ADDRESS"
+                }
+            ],
+            "outputs": [
+                {
+                    "name": "success",
+                    "type": "BOOL"
+                }
+            ]
+        },
+        {
             "name": "addVesting",
             "type": "Function",
             "payable": false,

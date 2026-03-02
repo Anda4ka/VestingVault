@@ -4,6 +4,15 @@ export const VestingVaultEvents = [];
 
 export const VestingVaultAbi = [
     {
+        name: 'initialize',
+        inputs: [
+            { name: 'vestingToken', type: ABIDataTypes.ADDRESS },
+            { name: 'revenueToken', type: ABIDataTypes.ADDRESS },
+        ],
+        outputs: [{ name: 'success', type: ABIDataTypes.BOOL }],
+        type: BitcoinAbiTypes.Function,
+    },
+    {
         name: 'addVesting',
         inputs: [
             { name: 'beneficiary', type: ABIDataTypes.ADDRESS },

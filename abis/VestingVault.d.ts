@@ -10,6 +10,16 @@ import { CallResult, OPNetEvent, IOP_NETContract } from 'opnet';
 // ------------------------------------------------------------------
 
 /**
+ * @description Represents the result of the initialize function call.
+ */
+export type Initialize = CallResult<
+    {
+        success: boolean;
+    },
+    OPNetEvent<never>[]
+>;
+
+/**
  * @description Represents the result of the addVesting function call.
  */
 export type AddVesting = CallResult<
@@ -148,6 +158,7 @@ export type TotalLocked = CallResult<
 // IVestingVault
 // ------------------------------------------------------------------
 export interface IVestingVault extends IOP_NETContract {
+    initialize(vestingToken: Address, revenueToken: Address): Promise<Initialize>;
     addVesting(
         beneficiary: Address,
         amount: bigint,

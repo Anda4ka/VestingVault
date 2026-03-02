@@ -2,7 +2,8 @@
  * VestingVault — End-to-End Test Script (OPNet Testnet)
  *
  * Flow:
- *   1. Connect to testnet + set up contracts
+ *   0. Deploy contract (OP Wallet) — no constructor calldata needed
+ *   1. Owner calls initialize(vestingToken, revenueToken)  ← NEW: one-time setup
  *   2. Owner approves vestingToken, then calls addVesting
  *   3. Depositor approves revenueToken, then calls depositRevenue
  *   4. Wait for blocks to pass the cliff
@@ -29,7 +30,7 @@ import { VESTING_VAULT_ABI } from './vesting-vault-abi';
 // CONFIGURATION — Replace these with your actual deployed addresses
 // ════════════════════════════════════════════════════════════════════════════
 
-const VAULT_ADDRESS          = 'opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87'; // ✅ deployed
+const VAULT_ADDRESS          = 'opt1...YOUR_NEW_VAULT_ADDRESS';                     // TODO: fill after fresh deploy
 const VESTING_TOKEN_ADDRESS  = 'bcrt1p...YOUR_VESTING_TOKEN_ADDRESS';              // TODO: fill
 const REVENUE_TOKEN_ADDRESS  = 'bcrt1p...YOUR_REVENUE_TOKEN_ADDRESS';              // TODO: fill
 
@@ -121,7 +122,35 @@ async function main(): Promise<void> {
     log('QUERY', `Revenue token: ${rtResult.decoded}`);
 
     // ────────────────────────────────────────────────────────────────────
-    // 3. Owner approves vestingToken for the vault
+    // 3. One-time initialize: set vestingToken + revenueToken addresses
+    //    Must be called once by owner right after deployment.
+    //    Skip this step if already initialized (vestingToken != zero).
+    // ────────────────────────────────────────────────────────────────────
+    const vtCheck = await vault.vestingToken();
+    const vtAddr = vtCheck.decoded as string;
+    const isInitialized = vtAddr && vtAddr !== '0x0000000000000000000000000000000000000000000000000000000000000000';
+
+    if (!isInitialized) {
+        log('INIT', `Initializing vault: vestingToken=${VESTING_TOKEN_ADDRESS}, revenueToken=${REVENUE_TOKEN_ADDRESS}`);
+
+        const initSim = await vault.initialize(VESTING_TOKEN_ADDRESS, REVENUE_TOKEN_ADDRESS);
+        if ('error' in initSim) {
+            throw new Error(`initialize() simulation failed: ${initSim.error}`);
+        }
+        const initReceipt = await initSim.sendTransaction({
+            signer: null,
+            mldsaSigner: null,
+            refundTo: OWNER_ADDRESS,
+            maximumAllowedSatToSpend: MAX_SAT_TO_SPEND,
+            network: NETWORK,
+        });
+        log('INIT', `initialize() TX sent. Hash: ${initReceipt}`);
+    } else {
+        log('INIT', `Already initialized. vestingToken=${vtAddr} — skipping.`);
+    }
+
+    // ────────────────────────────────────────────────────────────────────
+    // 4. Owner approves vestingToken for the vault
     // ────────────────────────────────────────────────────────────────────
     log('STEP 1', `Approving vault to spend ${VESTING_AMOUNT} vestingTokens...`);
 
@@ -229,7 +258,7 @@ async function main(): Promise<void> {
     // ────────────────────────────────────────────────────────────────────
     log('WAIT', `Waiting for cliff (${CLIFF_BLOCKS} blocks) to pass...`);
     log('WAIT', 'On testnet, each block takes ~10 minutes.');
-    log('WAIT', 'You can monitor block height at https://testnet.opnet.org');
+    log('WAIT', 'You can monitor block height at https://opscan.org');
     log('WAIT', 'For testing, use a short cliff (e.g., 2-3 blocks).');
 
     // Poll releasable amount until something is available
