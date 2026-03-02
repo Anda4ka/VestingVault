@@ -724,21 +724,42 @@ Grand total = 1700 = deposited ✓</div>
   let _provider = null, _network = null, _opnet = null;
   let walletAddress = null;
   let _walletAddrObj = null;   // Address object for wallet (needed by SDK)
+  let _AddressClass = null;    // Address constructor from @btc-vision/transaction
+  let _btcAddress = null;      // bitcoin address utils (bech32 decode)
   const _addrCache = {};       // cache hex/bech32 → Address objects
 
   // Convert any address string to an SDK Address object (cached)
+  // Layer 1: RPC getPublicKeyInfo (works for contracts + indexed wallets)
+  // Layer 2: bech32 decode → 32-byte witness program → Address.fromString('0x...')
   async function toAddr(address) {
     if (!address) return null;
     if (_addrCache[address]) return _addrCache[address];
+    // Layer 1: RPC
     try {
       const isContract = address.startsWith('0x');
       const addrObj = await _provider.getPublicKeyInfo(address, isContract);
-      if (addrObj) _addrCache[address] = addrObj;
-      return addrObj || null;
-    } catch(e) {
-      console.warn('toAddr failed for', address, ':', e.message);
-      return null;
+      if (addrObj) { _addrCache[address] = addrObj; return addrObj; }
+    } catch(_) {}
+    // Layer 2: decode bech32 wallet address → hex tweaked pubkey → Address
+    if (_AddressClass) {
+      try {
+        let hex;
+        if (address.startsWith('0x')) {
+          hex = address;
+        } else if (_btcAddress) {
+          // Decode bech32/bech32m: data = 32-byte witness program (x-only tweaked pubkey)
+          const decoded = _btcAddress.fromBech32(address);
+          hex = '0x' + Array.from(decoded.data).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        if (hex) {
+          const addrObj = _AddressClass.fromString(hex);
+          if (addrObj) { _addrCache[address] = addrObj; return addrObj; }
+        }
+      } catch(e) {
+        console.warn('toAddr fallback failed for', address, ':', e.message);
+      }
     }
+    return null;
   }
 
   // ─── helpers ─────────────────────────────────────────────────────────────
@@ -811,8 +832,18 @@ Grand total = 1700 = deposited ✓</div>
   window.connectWallet = async function() {
     try {
       info('Importing OPNet SDK…');
-      const { JSONRpcProvider, getContract } = await import('https://esm.sh/opnet@latest');
-      const { networks } = await import('https://esm.sh/@btc-vision/bitcoin@latest');
+      const [opnetMod, bitcoinMod] = await Promise.all([
+        import('https://esm.sh/opnet@latest'),
+        import('https://esm.sh/@btc-vision/bitcoin@latest'),
+      ]);
+      const { JSONRpcProvider, getContract } = opnetMod;
+      const { networks, address: btcAddr } = bitcoinMod;
+      _btcAddress = btcAddr;
+      // Load Address class for bech32 fallback
+      try {
+        const txMod = await import('https://esm.sh/@btc-vision/transaction@latest');
+        _AddressClass = txMod.Address || opnetMod.Address || null;
+      } catch(_) { _AddressClass = opnetMod.Address || null; }
       _network = networks.opnetTestnet;
       _provider = new JSONRpcProvider(RPC_URL, _network);
       _opnet = { getContract };
