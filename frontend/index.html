@@ -521,7 +521,17 @@
         ok(`Wallet connected: ${walletAddress}`);
         document.getElementById('connect-btn').textContent = 'Connected';
         document.getElementById('connect-btn').disabled = true;
-        _walletAddrObj = await toAddr(walletAddress);
+        // SDK needs Address with legacyPublicKey (33-byte compressed secp256k1).
+        // Get it from the wallet extension → Address.fromString(compressedPubkey)
+        // which sets legacyPublicKey + derives tweakedPubkey. Falls back to bech32 decode.
+        try {
+          const ext = window.opnet || window.unisat;
+          if (ext?.getPublicKey) {
+            const pk = await ext.getPublicKey(); // 33-byte compressed secp256k1
+            if (pk) _walletAddrObj = _AddressClass?.fromString(pk.startsWith('0x') ? pk : '0x' + pk) || null;
+          }
+        } catch(e) { console.warn('getPublicKey failed:', e.message); }
+        if (!_walletAddrObj) _walletAddrObj = await toAddr(walletAddress);
       }
 
       // Store provider globally
