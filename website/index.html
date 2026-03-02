@@ -864,15 +864,25 @@ Grand total = 1700 = deposited ✓</div>
         document.getElementById('wallet-info').style.display = 'flex';
         document.getElementById('nav-connect-btn').style.display = 'none';
         // SDK needs Address with legacyPublicKey (33-byte compressed secp256k1).
-        // Get it from the wallet extension → Address.fromString(compressedPubkey)
-        // which sets legacyPublicKey + derives tweakedPubkey. Falls back to bech32 decode.
+        // Address.fromString() only handles ML-DSA keys (1312+ bytes), NOT secp256k1.
+        // Strategy: bech32-decode wallet addr → Address with tweakedPubkey,
+        //           then patch .legacyPublicKey with the 33-byte key from getPublicKey().
         try {
           const ext = window.opnet || window.unisat;
           if (ext?.getPublicKey) {
-            const pk = await ext.getPublicKey(); // 33-byte compressed secp256k1
-            if (pk) _walletAddrObj = _AddressClass?.fromString(pk.startsWith('0x') ? pk : '0x' + pk) || null;
+            const pk = await ext.getPublicKey(); // 33-byte compressed secp256k1 hex
+            if (pk) {
+              const addr = await toAddr(walletAddress); // Address with tweakedPubkey (32 bytes)
+              if (addr) {
+                const pkHex = pk.startsWith('0x') ? pk.slice(2) : pk;
+                const pkBytes = new Uint8Array(pkHex.match(/.{2}/g).map(b => parseInt(b, 16)));
+                addr.legacyPublicKey = pkBytes; // patch 33-byte secp256k1 key onto address
+                _walletAddrObj = addr;
+                console.log('[addr debug] legacyPublicKey set:', addr.legacyPublicKey?.length, 'keys:', Object.keys(addr).join(','));
+              }
+            }
           }
-        } catch(e) { console.warn('getPublicKey failed:', e.message); }
+        } catch(e) { console.warn('getPublicKey setup failed:', e.message); }
         if (!_walletAddrObj) _walletAddrObj = await toAddr(walletAddress);
       }
 
