@@ -30,7 +30,7 @@ import { VESTING_VAULT_ABI } from './vesting-vault-abi';
 // CONFIGURATION — Replace these with your actual deployed addresses
 // ════════════════════════════════════════════════════════════════════════════
 
-const VAULT_ADDRESS          = 'opt1...YOUR_NEW_VAULT_ADDRESS';                     // TODO: fill after fresh deploy
+const VAULT_ADDRESS          = 'opt1sqplya7jvr5ryduzsrlezps6gfcfznddmeyjghym6';    // ✅ deployed
 const VESTING_TOKEN_ADDRESS  = 'bcrt1p...YOUR_VESTING_TOKEN_ADDRESS';              // TODO: fill
 const REVENUE_TOKEN_ADDRESS  = 'bcrt1p...YOUR_REVENUE_TOKEN_ADDRESS';              // TODO: fill
 

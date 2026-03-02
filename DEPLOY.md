@@ -4,11 +4,9 @@
 
 | Key | Value |
 |-----|-------|
-| Contract Address | `opt1...YOUR_NEW_VAULT_ADDRESS` ← update after fresh deploy |
+| Contract Address | `opt1sqplya7jvr5ryduzsrlezps6gfcfznddmeyjghym6` |
 | Network | OPNet Testnet (Signet fork) |
-| Explorer | https://opscan.org ← paste your address there |
-
-> **Note:** Previous address `opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87` was from a failed deploy (MLDSA error). New deploy needed with updated WASM.
+| Explorer | https://opscan.org/address/opt1sqplya7jvr5ryduzsrlezps6gfcfznddmeyjghym6 |
 
 ---
 

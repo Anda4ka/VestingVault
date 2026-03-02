@@ -2,8 +2,8 @@
 
 **On-chain vesting with cliff/linear release + proportional revenue sharing for OP_20 tokens, deployed on OPNet (Bitcoin L1). No bridges, no L2.**
 
-> **Deployed contract (OPNet Testnet):** `opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87`
-> [View on Explorer](https://opscan.org/address/opt1sqz7835fzffpzmex6cc8f4snp0qkume08pukh3w87)
+> **Deployed contract (OPNet Testnet):** `opt1sqplya7jvr5ryduzsrlezps6gfcfznddmeyjghym6`
+> [View on Explorer](https://opscan.org/address/opt1sqplya7jvr5ryduzsrlezps6gfcfznddmeyjghym6)
 
 ---
 
