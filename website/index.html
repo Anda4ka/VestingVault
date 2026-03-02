@@ -537,6 +537,64 @@
     .footer-copy { font-size: .74rem; color: var(--muted); }
     .footer-divider { width: 40px; height: 1px; background: var(--border); }
 
+    /* ═══════════════════════════════════════════ ADDRESS CARDS */
+    .addr-card {
+      background: var(--bg2); border: 1px solid var(--border);
+      border-radius: 10px; padding: 12px 14px;
+      transition: border-color .2s;
+    }
+    .addr-card:hover { border-color: var(--border2); }
+    .addr-card-label {
+      font-size: .67rem; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+      color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+    }
+    .addr-card-tag {
+      font-size: .6rem; padding: 2px 7px; border-radius: 4px; font-weight: 700;
+      background: rgba(249,115,22,.1); color: var(--orange); border: 1px solid rgba(249,115,22,.2);
+    }
+    .addr-card-tag.tag-cyan { background: rgba(34,211,238,.08); color: var(--cyan); border-color: rgba(34,211,238,.2); }
+    .addr-card-tag.tag-green { background: rgba(74,222,128,.08); color: var(--green); border-color: rgba(74,222,128,.2); }
+    .addr-row {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .addr-value {
+      flex: 1; font-family: var(--mono); font-size: .74rem; color: var(--text2);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      background: none; border: none; outline: none; cursor: text; width: 100%;
+    }
+    .addr-value:focus { color: var(--text); }
+    .copy-btn {
+      flex-shrink: 0; width: 28px; height: 28px; border-radius: 7px;
+      background: var(--surface); border: 1px solid var(--border2);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all .15s; color: var(--muted);
+      font-size: .8rem;
+    }
+    .copy-btn:hover { background: var(--surface3); color: var(--text); border-color: var(--orange); }
+    .copy-btn.copied { color: var(--green); border-color: rgba(74,222,128,.4); }
+
+    /* ═══════════════════════════════════════════ ALICE/BOB TABLE */
+    .ab-table {
+      width: 100%; border-collapse: collapse; margin-top: 14px;
+      font-size: .8rem;
+    }
+    .ab-table th {
+      text-align: left; font-size: .67rem; font-weight: 700; letter-spacing: .08em;
+      text-transform: uppercase; color: var(--muted); padding: 8px 12px;
+      border-bottom: 1px solid var(--border); background: var(--bg);
+    }
+    .ab-table td {
+      padding: 10px 12px; border-bottom: 1px solid var(--border);
+      font-family: var(--mono); font-size: .79rem; color: var(--text2);
+      vertical-align: middle;
+    }
+    .ab-table tr:last-child td { border-bottom: none; }
+    .ab-table tr:hover td { background: rgba(255,255,255,.02); }
+    .td-label { font-family: var(--font) !important; font-size: .8rem !important; color: var(--text) !important; font-weight: 500; }
+    .td-alice { color: var(--orange) !important; font-weight: 700; }
+    .td-bob   { color: var(--cyan) !important; font-weight: 700; }
+    .td-total { color: var(--green) !important; font-weight: 700; }
+
     /* ═══════════════════════════════════════════ SCROLL REVEAL */
     .reveal {
       opacity: 0; transform: translateY(20px);
@@ -729,17 +787,63 @@
   <div class="container">
     <div class="section-label">Mathematics</div>
     <h2 class="section-title">Revenue distribution — verified</h2>
-    <p class="section-sub">Example: Alice 70% locked, Bob 30% locked. Deposit 1 000 revenue tokens.</p>
+    <p class="section-sub">Example: Alice 70% locked, Bob 30% locked. Two deposits of 1 000 and 700 revenue tokens.</p>
+
+    <!-- Alice / Bob summary table -->
+    <div class="formula-card reveal" style="margin-top:52px">
+      <div class="formula-card-header"><span class="dot"></span> Alice &amp; Bob — end-state snapshot</div>
+      <div class="formula-body" style="padding:0">
+        <table class="ab-table">
+          <thead>
+            <tr>
+              <th>Participant</th>
+              <th>Locked</th>
+              <th>Share</th>
+              <th>Deposit 1 (1 000)</th>
+              <th>Deposit 2 (700)</th>
+              <th>Total earned</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="td-label">🟠 Alice</td>
+              <td class="td-alice">7 000</td>
+              <td>70%</td>
+              <td class="td-alice">700</td>
+              <td class="td-alice">400 <span style="font-size:.68rem;color:var(--muted)">(4000 locked)</span></td>
+              <td class="td-alice">1 100 ✓</td>
+            </tr>
+            <tr>
+              <td class="td-label">🔵 Bob</td>
+              <td class="td-bob">3 000</td>
+              <td>30%</td>
+              <td class="td-bob">300</td>
+              <td class="td-bob">600 <span style="font-size:.68rem;color:var(--muted)">(3000 locked)</span></td>
+              <td class="td-bob">600 ✓</td>
+            </tr>
+            <tr>
+              <td class="td-label" style="color:var(--muted)">Σ Total</td>
+              <td>10 000</td>
+              <td>100%</td>
+              <td class="td-total">1 000</td>
+              <td class="td-total">700</td>
+              <td class="td-total">1 700 ✓</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
     <div class="math-grid">
       <div>
-        <div class="formula-card reveal">
+        <div class="formula-card reveal reveal-delay-1">
           <div class="formula-card-header"><span class="dot"></span> Initial Deposit</div>
           <div class="formula-body">
             <div class="formula-block">rewardPerToken += 1000 × 10¹⁸ / 10000 = 10¹⁷</div>
             <p class="formula-note">Global accumulator updated in O(1). No loops over beneficiaries.</p>
           </div>
         </div>
-        <div class="formula-card reveal reveal-delay-1" style="margin-top:14px">
+        <div class="formula-card reveal reveal-delay-2" style="margin-top:14px">
           <div class="formula-card-header"><span class="dot"></span> Claim (Alice — 7 000 locked)</div>
           <div class="formula-body">
             <div class="formula-block">earned = 7000 × 10¹⁷ / 10¹⁸ = <strong>700</strong> ✓</div>
@@ -748,7 +852,7 @@
         </div>
       </div>
       <div>
-        <div class="formula-card reveal reveal-delay-2">
+        <div class="formula-card reveal reveal-delay-3">
           <div class="formula-card-header"><span class="dot"></span> After partial release (Alice releases 3 000)</div>
           <div class="formula-body">
             <div class="formula-block">stored pending = 700 (captured first)
@@ -779,22 +883,39 @@ Grand total     = 1700 = deposited ✓</div>
     <div class="cfg-panel">
       <div class="cfg-panel-label">Contract Configuration</div>
       <div class="cfg-grid">
-        <div class="form-field" style="margin:0">
-          <label>Vault Contract Address</label>
-          <input id="cfg-vault" type="text" value="0x813078152d97d3181b8e52f64f24451aed1916b7d6c459c5146b098045080089" />
+
+        <div class="addr-card">
+          <div class="addr-card-label">Vault Contract Address <span class="addr-card-tag">Vault</span></div>
+          <div class="addr-row">
+            <input id="cfg-vault" class="addr-value" type="text" value="0x813078152d97d3181b8e52f64f24451aed1916b7d6c459c5146b098045080089" />
+            <button class="copy-btn" title="Copy" onclick="copyAddr('cfg-vault',this)">⎘</button>
+          </div>
         </div>
-        <div class="form-field" style="margin:0">
-          <label>Revenue Token Address</label>
-          <input id="cfg-rev-token" type="text" value="0xdbe1fd1a52d80579d7f1ac7bac951b38084668944168689c3a011a482ccc9793" />
+
+        <div class="addr-card">
+          <div class="addr-card-label">Revenue Token Address <span class="addr-card-tag tag-cyan">Revenue</span></div>
+          <div class="addr-row">
+            <input id="cfg-rev-token" class="addr-value" type="text" value="0xdbe1fd1a52d80579d7f1ac7bac951b38084668944168689c3a011a482ccc9793" />
+            <button class="copy-btn" title="Copy" onclick="copyAddr('cfg-rev-token',this)">⎘</button>
+          </div>
         </div>
-        <div class="form-field" style="margin:0">
-          <label>Vesting Token Address</label>
-          <input id="cfg-vest-token" type="text" value="0xb554371f0cf493f64582acbb7f50c58fd644a2186d63092dbe64d062e67453a7" />
+
+        <div class="addr-card">
+          <div class="addr-card-label">Vesting Token Address <span class="addr-card-tag tag-green">Vesting</span></div>
+          <div class="addr-row">
+            <input id="cfg-vest-token" class="addr-value" type="text" value="0xb554371f0cf493f64582acbb7f50c58fd644a2186d63092dbe64d062e67453a7" />
+            <button class="copy-btn" title="Copy" onclick="copyAddr('cfg-vest-token',this)">⎘</button>
+          </div>
         </div>
-        <div class="form-field" style="margin:0">
-          <label>Your Wallet (auto-filled)</label>
-          <input id="cfg-wallet" type="text" placeholder="bcrt1p… (auto after connect)" readonly />
+
+        <div class="addr-card">
+          <div class="addr-card-label">Your Wallet <span class="addr-card-tag tag-green">Auto-filled</span></div>
+          <div class="addr-row">
+            <input id="cfg-wallet" class="addr-value" type="text" placeholder="connect wallet to auto-fill…" readonly />
+            <button class="copy-btn" title="Copy" onclick="copyAddr('cfg-wallet',this)">⎘</button>
+          </div>
         </div>
+
       </div>
       <div style="margin-top:14px">
         <button class="btn btn-ghost btn-sm" onclick="loadDashboard()">↻ Refresh</button>
@@ -1418,6 +1539,26 @@ Grand total     = 1700 = deposited ✓</div>
   };
 
   window.scrollToDash = function() { document.getElementById('dashboard').scrollIntoView({ behavior:'smooth' }); };
+
+  // ─── copy address helper ────────────────────────────────────────────────────
+  window.copyAddr = function(inputId, btn) {
+    const val = document.getElementById(inputId)?.value;
+    if (!val) return;
+    navigator.clipboard.writeText(val).then(() => {
+      btn.classList.add('copied');
+      btn.textContent = '✓';
+      setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '⎘'; }, 1500);
+    }).catch(() => {
+      // fallback for older browsers
+      const ta = document.createElement('textarea');
+      ta.value = val; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      btn.classList.add('copied'); btn.textContent = '✓';
+      setTimeout(() => { btn.classList.remove('copied'); btn.textContent = '⎘'; }, 1500);
+    });
+  };
 
   // ─── wire up nav connect button ───────────────────────────────────────────
   document.getElementById('nav-connect-btn').addEventListener('click', connectWallet);
