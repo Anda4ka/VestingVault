@@ -6,6 +6,9 @@
     "scripts": {
         "build": "asc src/index.ts --config asconfig.json --target debug",
         "build:release": "asc src/index.ts --config asconfig.json --target release",
+        "build:vest": "asc src/index_vest.ts --config asconfig.json --target vest-debug",
+        "build:rev": "asc src/index_rev.ts --config asconfig.json --target rev-debug",
+        "build:tokens": "npm run build:vest && npm run build:rev",
         "clean": "rm -rf build/*",
         "lint": "eslint src/"
     },

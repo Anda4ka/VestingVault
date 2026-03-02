@@ -2,14 +2,26 @@
     "targets": {
         "debug": {
             "outFile": "build/VestingVault.wasm",
-            "textFile": "build/VestingVault.wat"
+            "textFile": "build/VestingVault.wat",
+            "use": ["abort=src/index/abort"]
         },
         "release": {
             "outFile": "build/VestingVault.wasm",
             "textFile": "build/VestingVault.wat",
             "noAssert": true,
             "optimizeLevel": 3,
-            "shrinkLevel": 2
+            "shrinkLevel": 2,
+            "use": ["abort=src/index/abort"]
+        },
+        "vest-debug": {
+            "outFile": "build/VestingToken.wasm",
+            "textFile": "build/VestingToken.wat",
+            "use": ["abort=src/index_vest/abort"]
+        },
+        "rev-debug": {
+            "outFile": "build/RevenueToken.wasm",
+            "textFile": "build/RevenueToken.wat",
+            "use": ["abort=src/index_rev/abort"]
         }
     },
     "options": {
@@ -31,9 +43,6 @@
         "runtime": "stub",
         "memoryBase": 0,
         "initialMemory": 1,
-        "exportStart": "start",
-        "use": [
-            "abort=src/index/abort"
-        ]
+        "exportStart": "start"
     }
 }
