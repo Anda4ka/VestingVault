@@ -1006,6 +1006,35 @@ Grand total = 1700 = deposited ✓</div>
     return true;
   }
 
+  // sendTxRetry — like sendTx but retries simulation until allowance is confirmed on-chain.
+  // Needed when a prior increaseAllowance TX is in mempool but not yet in a confirmed block.
+  async function sendTxRetry(label, simFn, maxRetries = 8, delayMs = 5000) {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      if (attempt > 1) {
+        info(`${label}: allowance not yet confirmed, retrying in ${delayMs / 1000}s… (${attempt}/${maxRetries})`);
+        await new Promise(r => setTimeout(r, delayMs));
+      }
+      info(`Simulating ${label}…`);
+      try {
+        const sim = await simFn();
+        if ('error' in sim) {
+          if (attempt < maxRetries) continue;
+          err(`${label} sim failed: ${sim.error}`);
+          return false;
+        }
+        ok(`${label} simulation OK. Sending…`);
+        const tx = await sim.sendTransaction({ signer:null, mldsaSigner:null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: _network });
+        const txid = tx?.txid || tx?.hash || tx?.id || (typeof tx === 'string' ? tx : JSON.stringify(tx));
+        ok(`${label} TX: ${txid}`);
+        return true;
+      } catch(e) {
+        if (attempt < maxRetries) { info(`${label}: sim threw (${e.message}), will retry…`); }
+        else { err(`${label} failed: ${e.message}`); return false; }
+      }
+    }
+    return false;
+  }
+
   window.doRelease = async function() {
     if (!walletAddress || !_opnet || !_walletAddrObj) { warn('Connect wallet first'); return; }
     const { vault } = getCfg(); if (!vault) { warn('Set vault address'); return; }
@@ -1038,7 +1067,7 @@ Grand total = 1700 = deposited ✓</div>
       const tok = _opnet.getContract(revToken, OP20_ABI, _provider, _network, from);
       if (!await sendTx('increaseAllowance()', () => tok.increaseAllowance(vaultAddr, ab))) return;
       const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, from);
-      if (await sendTx('depositRevenue()', () => c.depositRevenue(ab))) await loadDashboard();
+      if (await sendTxRetry('depositRevenue()', () => c.depositRevenue(ab))) await loadDashboard();
     } catch(e) { err('depositRevenue() failed: ' + e.message); }
   };
 
@@ -1073,7 +1102,7 @@ Grand total = 1700 = deposited ✓</div>
       const tok = _opnet.getContract(vestToken, OP20_ABI, _provider, _network, from);
       if (!await sendTx('increaseAllowance()', () => tok.increaseAllowance(vaultAddr, ab))) return;
       const c = _opnet.getContract(vault, VESTING_VAULT_ABI, _provider, _network, from);
-      if (await sendTx('addVesting()', () => c.addVesting(benAddr, ab, cb, db))) await loadDashboard();
+      if (await sendTxRetry('addVesting()', () => c.addVesting(benAddr, ab, cb, db))) await loadDashboard();
     } catch(e) { err('addVesting() failed: ' + e.message); }
   };
 
