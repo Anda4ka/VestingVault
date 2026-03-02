@@ -378,6 +378,7 @@
   let _btcAddress = null;      // bitcoin address utils (bech32 decode)
   const _addrCache = {};       // cache hex/bech32 → Address objects
   let _ownerAddrForSim = null; // owner Address fetched from the node (proper SDK object for write sims)
+  const txStr = tx => tx?.txid || tx?.hash || tx?.id || (typeof tx === 'string' ? tx : JSON.stringify(tx));
 
   async function getFromAddr() {
     if (_ownerAddrForSim) return _ownerAddrForSim;
@@ -645,7 +646,7 @@
       if ('error' in sim) { err('Simulation failed: ' + sim.error); return; }
       ok('Simulation OK. Sending...');
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
-      ok('release() TX: ' + tx);
+      ok('release() TX: ' + txStr(tx));
       await loadVaultState();
     } catch(e) { err('release() failed: ' + e.message); }
   };
@@ -664,7 +665,7 @@
       if ('error' in sim) { err('Simulation failed: ' + sim.error); return; }
       ok('Simulation OK. Sending...');
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
-      ok('claimRevenue() TX: ' + tx);
+      ok('claimRevenue() TX: ' + txStr(tx));
       await loadVaultState();
     } catch(e) { err('claimRevenue() failed: ' + e.message); }
   };
@@ -688,7 +689,7 @@
       const approveSim = await token.increaseAllowance(vaultAddr, amountBig);
       if ('error' in approveSim) { err('increaseAllowance sim failed: ' + approveSim.error); return; }
       const approveTx = await approveSim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
-      ok('increaseAllowance TX: ' + approveTx);
+      ok('increaseAllowance TX: ' + txStr(approveTx));
 
       // Step 2: deposit
       info('Depositing revenue...');
@@ -696,7 +697,7 @@
       const sim = await contract.depositRevenue(amountBig);
       if ('error' in sim) { err('Deposit sim failed: ' + sim.error); return; }
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
-      ok('depositRevenue() TX: ' + tx);
+      ok('depositRevenue() TX: ' + txStr(tx));
       await loadVaultState();
     } catch(e) { err('depositRevenue() failed: ' + e.message); }
   };
@@ -717,7 +718,7 @@
       const sim = await contract.initialize(vestAddr, revAddr);
       if ('error' in sim) { err('initialize() sim failed: ' + sim.error); return; }
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
-      ok('initialize() TX: ' + tx + ' — vault is now ready!');
+      ok('initialize() TX: ' + txStr(tx) + ' — vault is now ready!');
       await loadVaultState();
     } catch(e) { err('initialize() failed: ' + e.message); }
   };
@@ -749,7 +750,7 @@
       const approveSim = await token.increaseAllowance(vaultAddr, amountBig);
       if ('error' in approveSim) { err('increaseAllowance sim failed: ' + approveSim.error); return; }
       const approveTx = await approveSim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
-      ok('increaseAllowance TX: ' + approveTx);
+      ok('increaseAllowance TX: ' + txStr(approveTx));
 
       // Step 2: addVesting
       info('Calling addVesting()...');
@@ -757,7 +758,7 @@
       const sim = await contract.addVesting(benAddr, amountBig, cliffBig, durationBig);
       if ('error' in sim) { err('addVesting sim failed: ' + sim.error); return; }
       const tx = await sim.sendTransaction({ signer: null, mldsaSigner: null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: window._network });
-      ok('addVesting() TX: ' + tx);
+      ok('addVesting() TX: ' + txStr(tx));
       await loadVaultState();
     } catch(e) { err('addVesting() failed: ' + e.message); }
   };

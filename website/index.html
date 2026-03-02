@@ -1001,7 +1001,8 @@ Grand total = 1700 = deposited ✓</div>
     if ('error' in sim) { err(`${label} sim failed: ${sim.error}`); return false; }
     ok(`${label} simulation OK. Sending…`);
     const tx = await sim.sendTransaction({ signer:null, mldsaSigner:null, refundTo: walletAddress, maximumAllowedSatToSpend: MAX_SAT, network: _network });
-    ok(`${label} TX: ${tx}`);
+    const txid = tx?.txid || tx?.hash || tx?.id || (typeof tx === 'string' ? tx : JSON.stringify(tx));
+    ok(`${label} TX: ${txid}`);
     return true;
   }
 
